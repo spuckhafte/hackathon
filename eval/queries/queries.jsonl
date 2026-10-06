@@ -1,0 +1,25 @@
+{"qid": "q01", "query": "right to privacy of personal data", "kind": "free", "split": "test", "intent": "the informational-privacy line of authority"}
+{"qid": "q02", "query": "anticipatory bail in economic offences", "kind": "free", "split": "dev", "intent": "s.438 CrPC principles, and whether economic offences are a special class"}
+{"qid": "q03", "query": "dying declaration as the sole basis of conviction", "kind": "free", "split": "test", "intent": "can a conviction rest on a dying declaration alone"}
+{"qid": "q04", "query": "basic structure doctrine amendment of the constitution", "kind": "free", "split": "test", "intent": "limits on the amending power"}
+{"qid": "q05", "query": "compassionate appointment on death of a government servant", "kind": "free", "split": "test", "intent": "service law: compassionate appointment is not an inheritable right"}
+{"qid": "q06", "query": "maintenance to a divorced muslim woman", "kind": "free", "split": "test", "intent": "s.125 CrPC versus the 1986 Act"}
+{"qid": "q07", "query": "reservation in promotion for scheduled castes", "kind": "free", "split": "dev", "intent": "Art. 16(4A) and the creamy-layer/efficiency line"}
+{"qid": "q08", "query": "sustainable development and environmental clearance", "kind": "free", "split": "test", "intent": "environmental clearance, precautionary principle"}
+{"qid": "q09", "query": "custodial death and compensation for violation of fundamental rights", "kind": "free", "split": "test", "intent": "public-law compensation under Art. 32/226"}
+{"qid": "q10", "query": "res judicata in a writ petition", "kind": "free", "split": "test", "intent": "whether a dismissed writ bars a later one"}
+{"qid": "q11", "query": "S. 302 IPC dying declaration conviction", "kind": "statute", "split": "test", "intent": "statute-anchored twin of q03"}
+{"qid": "q12", "query": "Section 138 Negotiable Instruments Act dishonour of cheque", "kind": "statute", "split": "test", "intent": "cheque-bouncing prosecutions"}
+{"qid": "q13", "query": "Article 21 right to life and personal liberty", "kind": "statute", "split": "dev", "intent": "the Art. 21 line from Gopalan to Maneka and beyond"}
+{"qid": "q14", "query": "Section 482 CrPC quashing of criminal proceedings", "kind": "statute", "split": "test", "intent": "inherent power to quash"}
+{"qid": "q15", "query": "Section 498A IPC cruelty by husband", "kind": "statute", "split": "test", "intent": "matrimonial cruelty"}
+{"qid": "q16", "query": "Section 304B IPC dowry death presumption", "kind": "statute", "split": "test", "intent": "dowry death and the s.113B Evidence Act presumption"}
+{"qid": "q17", "query": "Section 20 NDPS Act commercial quantity", "kind": "statute", "split": "dev", "intent": "quantity thresholds and sentencing under the NDPS Act"}
+{"qid": "q18", "query": "Order VII Rule 11 CPC rejection of plaint", "kind": "statute", "split": "test", "intent": "rejection of a plaint that discloses no cause of action"}
+{"qid": "q19", "query": "privacy /p \"fundamental right\"", "kind": "operator", "split": "test", "intent": "same-paragraph proximity: privacy argued AS a fundamental right"}
+{"qid": "q20", "query": "bail! AND act:IPC year:>=2010", "kind": "operator", "split": "test", "intent": "root expansion plus a parametric act and year filter"}
+{"qid": "q21", "query": "\"basic structure\" AND bench:>=9", "kind": "operator", "split": "test", "intent": "phrase plus a Constitution-bench filter"}
+{"qid": "q22", "query": "murder /5 intention NOT accident", "kind": "operator", "split": "dev", "intent": "window proximity plus a set difference"}
+{"qid": "q23", "query": "statutes:(crpc§482) AND quash!", "kind": "operator", "split": "test", "intent": "zone restriction onto the synthetic statutes zone"}
+{"qid": "q24", "query": "dowry /s cruelty AND act:IPC", "kind": "operator", "split": "test", "intent": "same-sentence proximity plus an act filter"}
+{"qid": "q25", "query": "act:NDPS AND type:\"criminal appeal\" disposal:allowed", "kind": "operator", "split": "test", "intent": "filters only: no text to score, so it ranks by authority"}
