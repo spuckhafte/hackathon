@@ -238,6 +238,59 @@ def test_saved_header_records_the_bench_provenance(idx):
 # --------------------------------------------------------------------------
 # A manifest document with no extracted record must not vanish
 # --------------------------------------------------------------------------
+# --------------------------------------------------------------------------
+# Hardening against M1's noisy CORAM parse
+# --------------------------------------------------------------------------
+def test_prose_caught_by_the_coram_parse_is_not_indexed_as_a_judge():
+    """Real example from the corpus: the parse ran into the surrounding text."""
+    from nyaya.index.parametric import _judge_lookup_keys
+
+    keys = _judge_lookup_keys([
+        "for the respondent. the judgment of the court was delivered by CHANDRACHUD",
+    ])
+    assert keys == []
+
+
+def test_ocr_glued_and_is_split_into_two_judges():
+    """"H.R. KHANNA ANDY. V. CHANDRACHUD" is two judges, not one."""
+    from nyaya.index.parametric import _judge_lookup_keys
+
+    keys = _judge_lookup_keys(["H.R. KHANNA ANDY. V. CHANDRACHUD"])
+    assert "khanna" in keys
+    assert "chandrachud" in keys
+    assert not any("andy" in k for k in keys)
+
+
+@pytest.mark.parametrize(
+    "name,ok",
+    [
+        ("D.Y. CHANDRACHUD", True),
+        ("MEHR CHAND MAHAJAN", True),
+        ("SIR SYED FAZL ALI", True),
+        ("PER CHANDRACHUD", False),                    # "per" is prose
+        ("THE JUDGMENT OF THE COURT", False),
+        ("1980 V. CHANDRACHUD", False),                # a year is not a name
+        ("A B C D E F G H", False),                    # too many words
+        ("", False),
+    ],
+)
+def test_plausible_judge(name, ok):
+    from nyaya.index.parametric import _plausible_judge
+
+    assert _plausible_judge(name) is ok
+
+
+def test_noisy_judges_do_not_stop_the_clean_ones_being_indexed():
+    man = _manifest()
+    recs = _records()
+    recs[0]["judges"] = ["PER CHANDRACHUD", "D.Y. CHANDRACHUD", "A.K. SIKRI"]
+    idx = build(man, recs, verbose=False)
+    # doc 1 already has S.M. Sikri, so the surname key holds both
+    assert idx.select("judge", "=", "sikri").tolist() == [0, 1]
+    assert idx.select("judge", "=", "a.k. sikri").tolist() == [0]
+    assert 0 in idx.select("judge", "=", "chandrachud").tolist()
+
+
 def test_doc_without_a_record_keeps_its_metadata_facts():
     """53 scanned + 7 short + 2 + 2 documents have no record; they still have a year."""
     man = _manifest()
