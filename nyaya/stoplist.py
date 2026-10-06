@@ -85,57 +85,63 @@ DOMAIN_DF_THRESHOLD = 0.80
 #: ("was"->"wa", "this"->"thi", "has"->"ha", "any"->"ani", "before"->"befor",
 #: "therefore"->"therefor", "only"->"onli", "his"->"hi") are NOT repeated here.
 DOMAIN_DF: Dict[str, Tuple[int, int]] = {
-    # --- the words every judgment contains: idf <= 0.01, pure noise ---------
-    "court": (760, 760),                # df/N = 1.000
-    "judgment": (755, 760),             # df/N = 0.993
-    "supreme": (751, 760),              # df/N = 0.988
-    "case": (742, 760),                 # df/N = 0.976
-    "respond": (741, 760),              # df/N = 0.975   <- "respondent"
-    "date": (738, 760),                 # df/N = 0.971
-    "deliv": (724, 760),                # df/N = 0.953   <- "delivered"
-    "made": (715, 760),                 # df/N = 0.941
-    "appeal": (710, 760),               # df/N = 0.934
-    "appel": (709, 760),                # df/N = 0.933   <- "appellant"
-    "jurisdict": (707, 760),            # df/N = 0.930   <- "jurisdiction"
-    "refer": (692, 760),                # df/N = 0.911
-    "view": (687, 760),                 # df/N = 0.904
-    "fact": (678, 760),                 # df/N = 0.892
-    "one": (677, 760),                  # df/N = 0.891
-    "follow": (670, 760),               # df/N = 0.882
-    "question": (665, 760),             # df/N = 0.875
-    "said": (657, 760),                 # df/N = 0.864
-    "two": (642, 760),                  # df/N = 0.845
-    "file": (641, 760),                 # df/N = 0.843
-    "dismiss": (633, 760),              # df/N = 0.833
-    "civil": (629, 760),                # df/N = 0.828
-    "learn": (626, 760),                # df/N = 0.824   <- "learned [counsel]"
-    "allow": (626, 760),                # df/N = 0.824
-    "will": (622, 760),                 # df/N = 0.818
-    "reason": (621, 760),               # df/N = 0.817
-    "matter": (618, 760),               # df/N = 0.813
-    "time": (618, 760),                 # df/N = 0.813
-    "person": (616, 760),               # df/N = 0.811
-    "set": (612, 760),                  # df/N = 0.805
-    "make": (611, 760),                 # df/N = 0.804
+    # --- the words every judgment contains: idf <= 0.10, pure noise ---------
+    "versu": (13878, 13878),        # df/N = 1.000
+    "court": (13877, 13878),        # df/N = 1.000
+    "judgment": (13741, 13878),     # df/N = 0.990
+    "date": (13643, 13878),         # df/N = 0.983
+    "case": (13608, 13878),         # df/N = 0.981
+    "respond": (13385, 13878),      # df/N = 0.964
+    "deliv": (13262, 13878),        # df/N = 0.956
+    "appeal": (13096, 13878),       # df/N = 0.944
+    "appel": (12992, 13878),        # df/N = 0.936
+    "jurisdict": (12989, 13878),    # df/N = 0.936
+    "made": (12935, 13878),         # df/N = 0.932
+    "one": (12437, 13878),          # df/N = 0.896
+    "view": (12435, 13878),         # df/N = 0.896
+    "fact": (12425, 13878),         # df/N = 0.895
+    "said": (12301, 13878),         # df/N = 0.886
+    "refer": (12295, 13878),        # df/N = 0.886
+    "question": (12264, 13878),     # df/N = 0.884
+    "follow": (11969, 13878),       # df/N = 0.862
+    "file": (11697, 13878),         # df/N = 0.843
+    "time": (11606, 13878),         # df/N = 0.836
+    "reason": (11496, 13878),       # df/N = 0.828
+    "two": (11318, 13878),          # df/N = 0.816
+    "allow": (11254, 13878),        # df/N = 0.811
+    "civil": (11223, 13878),        # df/N = 0.809
+    "present": (11214, 13878),      # df/N = 0.808
+    "learn": (11179, 13878),        # df/N = 0.806
+    "matter": (11156, 13878),       # df/N = 0.804
+    "will": (11142, 13878),         # df/N = 0.803
+    "taken": (11137, 13878),        # df/N = 0.802
     # --- page furniture of the S.C.R. reporter, not language at all --------
-    # Every SCR page prints "SUPREME COURT REPORTS" in the header and the
-    # paragraph-locator letters A-H down the margin, so PDF extraction emits
-    # them in essentially every document.  M1's ingest could strip them; until
-    # it does, stopping them is what keeps them out of every tf-idf vector.
-    "scr": (750, 760),                  # df/N = 0.987
-    "reports": (749, 760),              # df/N = 0.986
-    "jj": (734, 760),                   # df/N = 0.966   (", JJ." in the bench line)
-    "v": (759, 760),                    # df/N = 0.999   (the "v." of every title)
-    "j": (726, 760),                    # df/N = 0.955
-    "c": (748, 760),                    # df/N = 0.984
-    "b": (744, 760),                    # df/N = 0.979
-    "d": (736, 760),                    # df/N = 0.968
-    "e": (727, 760),                    # df/N = 0.957
-    "f": (715, 760),                    # df/N = 0.941
-    "h": (710, 760),                    # df/N = 0.934
-    "s": (697, 760),                    # df/N = 0.917
-    "g": (691, 760),                    # df/N = 0.909
-    "r": (619, 760),                    # df/N = 0.814
+    # Every S.C.R. page prints the paragraph-locator letters A-H down the
+    # margin and the bench line ends ", JJ.", so PDF extraction emits them in
+    # nearly every document.  (The "SUPREME COURT REPORTS" running header that
+    # topped the wave-1 list is gone: df("supreme") and df("reports") are now 0,
+    # because M1's zoner strips it.  These single letters are what is left.)
+    "v": (13368, 13878),            # df/N = 0.963
+    "c": (13331, 13878),            # df/N = 0.961
+    "j": (13261, 13878),            # df/N = 0.956
+    "b": (12891, 13878),            # df/N = 0.929
+    "jj": (12856, 13878),           # df/N = 0.926
+    "d": (12836, 13878),            # df/N = 0.925
+    "s": (12626, 13878),            # df/N = 0.910
+    "e": (12574, 13878),            # df/N = 0.906
+    "scr": (12533, 13878),          # df/N = 0.903
+    "h": (12107, 13878),            # df/N = 0.872
+    "f": (12018, 13878),            # df/N = 0.866
+    "g": (11724, 13878),            # df/N = 0.845
+    "r": (11257, 13878),            # df/N = 0.811
+    # --- small integers: list and paragraph numbering ----------------------
+    # Not language either, and their idf is ~0.02-0.10.  Larger numbers are
+    # unaffected - a statute section number is far rarer than this.
+    "1": (13649, 13878),            # df/N = 0.983
+    "2": (13535, 13878),            # df/N = 0.975
+    "3": (13090, 13878),            # df/N = 0.943
+    "4": (12154, 13878),            # df/N = 0.876
+    "5": (11512, 13878),            # df/N = 0.830
 }
 
 #: Terms that the measurement flagged but that we deliberately KEEP, with the
@@ -156,12 +162,15 @@ DOMAIN_KEEP_REASONS: Dict[str, str] = {
 #: The human-readable description of what --derive actually ran on, so the
 #: numbers in DOMAIN_DF are reproducible and honestly labelled.
 DF_SOURCE = (
-    "760 judgment PDFs, 10 per year across 1950-2025, drawn from "
-    "data/raw/pdf with seed config.SAMPLE_SEED (358); text via PyMuPDF; "
-    "command: python -m nyaya.stoplist --derive --source pdf --limit 760. "
-    "Refresh against data/processed/judgments.jsonl once the zoned corpus is "
-    "complete (--source jsonl); the ranking of these terms is not expected to "
-    "move, because they are the reporter's own vocabulary."
+    "df read from the built positional index over all N = 13,878 indexed "
+    "judgments (PositionalIndex.df), which is the same df the scorers use. "
+    "The candidate list came from a full streaming pass: "
+    "python -m nyaya.stoplist --derive --source jsonl --write-lexicon. "
+    "Wave-1 figures were measured on a 760-PDF sample and have been replaced; "
+    "four terms that cleared 0.80 on the sample (dismiss, make, set, person) "
+    "fall below it on the whole corpus and were dropped, and eight that the "
+    "sample missed were added - 'versu' most notably, the stem of the "
+    "'versus' in every S.C.R. case title, at df/N = 1.000."
 )
 
 
