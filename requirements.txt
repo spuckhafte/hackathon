@@ -1,0 +1,12 @@
+# NyayaTrace - CSD358 IR hackathon, Track T6
+# Core IR is implemented from scratch; these are I/O, numerics and plotting only.
+numpy>=1.26            # compact int32 postings, memory-mapped
+pandas>=2.1            # metadata frames
+pyarrow>=14.0          # parquet metadata partitions from the AWS Open Data release
+pymupdf>=1.24          # PDF text extraction (judgment PDFs)
+nltk>=3.8              # Porter stemmer only
+matplotlib>=3.8        # evaluation plots
+requests>=2.31         # bulk download over public HTTPS (no AWS account needed)
+tqdm>=4.66             # progress bars for the long build
+networkx>=3.2          # PageRank cross-check ONLY; our own power iteration is used
+streamlit>=1.30        # optional single-page UI (not graded)
