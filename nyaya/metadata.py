@@ -345,37 +345,71 @@ def merge_from_record(meta_row: Dict[str, Any], record: Any) -> Dict[str, Any]:
     survives.  The metadata value is never destroyed — it stays under
     ``bench_size_meta`` / ``case_type_meta`` so an ablation can compare them.
 
-    ``record`` may be a ``contracts.JudgmentRecord`` or a plain dict.
+    ``record`` may be a ``contracts.JudgmentRecord`` or a plain dict, and
+    ``meta_row`` may be a row taken straight out of the parquet — where a list
+    column arrives as a numpy array, so truthiness has to go through
+    :func:`_as_str_list` rather than ``or []``.
     """
     get = (lambda k: getattr(record, k, None)) if not isinstance(record, dict) else record.get
     out = dict(meta_row)
 
-    out.setdefault("bench_size_meta", int(meta_row.get("bench_size_meta") or 0))
-    out.setdefault("case_type_meta", meta_row.get("case_type") or "")
+    out.setdefault("bench_size_meta", _as_int(meta_row.get("bench_size_meta")))
+    out.setdefault("case_type_meta", _as_str(meta_row.get("case_type")))
 
-    pdf_bench = int(get("bench_size") or 0)
+    pdf_bench = _as_int(get("bench_size"))
     out["bench_size"] = pdf_bench if pdf_bench > 0 else out["bench_size_meta"]
     out["bench_source"] = "pdf" if pdf_bench > 0 else "meta"
 
-    pdf_judges = list(get("judges") or [])
-    meta_judges = list(meta_row.get("judges") or [])
-    out["judges"] = pdf_judges if pdf_judges else meta_judges
+    pdf_judges = _as_str_list(get("judges"))
+    out["judges"] = pdf_judges if pdf_judges else _as_str_list(meta_row.get("judges"))
 
-    pdf_type = (get("case_type") or "").strip()
-    out["case_type"] = pdf_type if pdf_type else (out["case_type_meta"] or "")
+    pdf_type = _as_str(get("case_type")).strip()
+    out["case_type"] = pdf_type if pdf_type else _as_str(out["case_type_meta"])
 
-    pdf_no = (get("case_no") or "").strip()
+    pdf_no = _as_str(get("case_no")).strip()
     if pdf_no:
         out["case_no"] = pdf_no
         if not out["case_type"]:
             out["case_type"] = derive_case_type(extra=pdf_no)
 
     for k in ("neutral_cite", "scr_cite", "decision_date", "disposal"):
-        if not out.get(k):
-            v = (get(k) if k != "decision_date" else get("date")) or ""
+        if not _as_str(out.get(k)):
+            v = _as_str(get(k) if k != "decision_date" else get("date"))
             if v:
                 out[k] = v
     return out
+
+
+def _as_str(value: Any) -> str:
+    """'' for None/NaN, otherwise ``str``.  Never raises on a numpy scalar."""
+    if value is None:
+        return ""
+    if isinstance(value, float) and value != value:        # NaN
+        return ""
+    return str(value)
+
+
+def _as_int(value: Any) -> int:
+    try:
+        if value is None or (isinstance(value, float) and value != value):
+            return 0
+        return int(value)
+    except (TypeError, ValueError):
+        return 0
+
+
+def _as_str_list(value: Any) -> List[str]:
+    """A list column may arrive as list, tuple, numpy array, None or NaN."""
+    if value is None:
+        return []
+    if isinstance(value, str):
+        return [value] if value.strip() else []
+    if isinstance(value, float) and value != value:
+        return []
+    try:
+        return [str(v) for v in value if _as_str(v).strip()]
+    except TypeError:
+        return []
 
 
 # ==========================================================================
