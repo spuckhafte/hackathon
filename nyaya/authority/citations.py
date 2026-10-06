@@ -283,9 +283,13 @@ def jaccard(a: Set[str], b: Set[str]) -> float:
 class CitationResolver:
     """Maps a citation (and an optional case name) onto a universe ``node_id``."""
 
-    def __init__(self, universe: Optional[pd.DataFrame] = None):
+    def __init__(self, universe: Optional[pd.DataFrame] = None,
+                 enable_pinpoint: bool = False):
         uni = load_universe() if universe is None else universe
         self.n_nodes = len(uni)
+        #: Pinpoint page-range resolution.  Measured at ~89% wrong on this
+        #: corpus and therefore off; see :meth:`_pinpoint` for the audit.
+        self.enable_pinpoint = bool(enable_pinpoint)
 
         self.by_scr: Dict[str, int] = {}
         self.by_scr_yp: Dict[Tuple[int, int], List[int]] = defaultdict(list)
@@ -348,21 +352,41 @@ class CitationResolver:
         self.unparsed_paths = bad
 
     def _pinpoint(self, m: CiteMatch) -> List[int]:
-        """Judgments whose printed page span *contains* the cited page.
+        """Judgments whose printed page span contains the cited page.
 
-        A citation frequently points at the page the relevant passage is on, not
-        at the judgment's first page: "[1950] S.C.R. 87" when the judgment runs
-        from 75 to 100.  Such a citation misses an exact first-page key but is
-        still unambiguous, because the pages of an SCR volume partition it — a
-        page belongs to exactly one judgment.  Using the printed volume when the
-        citation gives one keeps that guarantee; without a volume we fall back to
-        the whole year and may get several candidates, which the case name then
-        settles.
+        **MEASURED AND REJECTED — off by default.  See ``enable_pinpoint``.**
+
+        The idea was sound: a citation often points at the page a passage is on
+        rather than the judgment's first page ("[1950] S.C.R. 87" for a judgment
+        running 75-87), so range containment should recover citations that miss
+        the exact first-page key.  It recovered 4.46% of all occurrences, which
+        looked like a clear win.
+
+        It is not.  Two properties of this corpus break it:
+
+        1. The ``p2`` in a bucket key is *not* consistently the last page.  In
+           the 1950 volume 1, 19 of 41 judgments' ranges overlap their
+           neighbour's because ``p2`` is sometimes the next judgment's first page.
+           Boundary pages therefore belong to two judgments at once.
+        2. The OCR truncates page numbers.  "[1950] S.C.R. 869" (Chiranjit Lal,
+           the Sholapur Mills case) is read as "[1950] S.C.R. 86", which falls
+           inside an unrelated judgment's range and produces a confident,
+           completely wrong edge.
+
+        Audited on a 1-in-3 sample of the first 4,000 judgments, using the nearby
+        case name as a proxy for ground truth: of the pinpoint resolutions where a
+        name was available to check, **31 disagreed with the resolved title and
+        only 4 agreed** — about 89% wrong.  A wrong edge is worse than a missing
+        one because PageRank propagates it, so the rung is disabled.  It is kept
+        here, behind a flag, so the negative result stays reproducible and so the
+        report can show the measurement rather than assert it.
         """
-        if m.reporter != "scr" or not m.page:
+        if not self.enable_pinpoint or m.reporter != "scr" or not m.page:
             return []
         key = (m.year, m.volume) if m.volume else m.year
-        return [n for (a, b, n) in self.page_ranges.get(key, ()) if a <= m.page <= b]
+        # Strictly interior: the endpoints are the ambiguous ones, and an exact
+        # first-page citation has already been handled by rungs 1 and 3.
+        return [n for (a, b, n) in self.page_ranges.get(key, ()) if a < m.page < b]
 
     # -- the cascade ------------------------------------------------------
     def resolve(self, group: Sequence[CiteMatch], name: str = "") -> Tuple[int, str, str]:

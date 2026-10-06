@@ -233,18 +233,29 @@ def test_volume_less_citation_without_a_name_in_an_ambiguous_year_is_refused(res
 
 
 # --------------------------------------------------------------------------
-# Rung 3b: pinpoint pages
+# Rung 3b: pinpoint pages — measured at ~89% wrong, so OFF by default
 # --------------------------------------------------------------------------
-def test_pinpoint_page_inside_a_judgment_span_resolves(resolver):
-    """Node 0 spans pages 51-127; a citation to page 60 is a pinpoint."""
-    node, by, meth = _resolve(resolver, "at [1951] S.C.R. 60 the Court said")
+def test_pinpoint_is_disabled_by_default(resolver):
+    """An interior-page citation must NOT resolve: on this corpus the rung was
+    audited at ~89% wrong (OCR truncates '869' to '86', and bucket-key page
+    ranges overlap their neighbours), so it is off."""
+    assert resolver.enable_pinpoint is False
+    node, by, _ = _resolve(resolver, "at [1951] S.C.R. 60 the Court said")
+    assert node == -1 and by == "unresolved"
+
+
+def test_pinpoint_can_be_enabled_for_the_ablation():
+    """The rejected rung stays reproducible so the report can show the number."""
+    r = CitationResolver(_universe(), enable_pinpoint=True)
+    node, by, meth = _resolve(r, "at [1951] S.C.R. 60 the Court said")
     assert (node, by, meth) == (0, "scr", "scr_pinpoint_unique")
 
 
-def test_pinpoint_respects_the_printed_volume(resolver):
-    """Page 15 exists in both 1959 volumes; the printed volume disambiguates."""
-    assert _resolve(resolver, "[1959] 1 S.C.R. 15")[0] == 2
-    assert _resolve(resolver, "[1959] SUPP. 1 S.C.R. 15")[0] == 1
+def test_enabled_pinpoint_excludes_the_ambiguous_endpoints():
+    """p2 is sometimes the next judgment's first page, so endpoints are refused."""
+    r = CitationResolver(_universe(), enable_pinpoint=True)
+    assert r._pinpoint(find_citations("[1951] S.C.R. 127")[0]) == []   # == p2
+    assert r._pinpoint(find_citations("[1951] S.C.R. 60")[0]) == [0]   # interior
 
 
 def test_a_page_outside_every_span_is_not_invented(resolver):

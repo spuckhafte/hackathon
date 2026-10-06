@@ -54,6 +54,7 @@ from __future__ import annotations
 
 import argparse
 import json
+import re
 import sys
 from pathlib import Path
 from typing import Any, Dict, Iterable, Iterator, List, Optional, Sequence, Tuple
@@ -460,18 +461,70 @@ def build(manifest: Optional[pd.DataFrame] = None,
     return idx
 
 
+#: Words that never appear in a judge's name.  Their presence means the CORAM
+#: parse ran past the bench line and swallowed prose, e.g.
+#: "for the respondent. the judgment of the court was delivered by chandrachud".
+_NOT_A_NAME = frozenset({
+    "judgment", "judgement", "respondent", "appellant", "petitioner", "behalf",
+    "delivered", "court", "counsel", "per", "himself", "order", "coram",
+    "advocate", "appeal", "versus", "dated", "hon", "bench", "before",
+})
+
+#: A bench line is a list of names, so a "name" longer than this is prose.
+_MAX_NAME_WORDS = 6
+_MAX_NAME_CHARS = 44
+
+#: "AND Y.V. CHANDRACHUD" is OCR'd as "ANDY. V. CHANDRACHUD" often enough to be
+#: worth repairing: without it, two judges collapse into one bogus name.
+_GLUED_AND_RE = re.compile(r"(?i)\bAND(Y)\.\s*")
+
+
+def _plausible_judge(name: str) -> bool:
+    """Is this string actually a judge's name, or prose the CORAM parse caught?"""
+    if not name:
+        return False
+    if len(name) > _MAX_NAME_CHARS:
+        return False
+    words = name.split()
+    if not (1 <= len(words) <= _MAX_NAME_WORDS):
+        return False
+    low = name.lower()
+    if any(w.strip(".,;:") in _NOT_A_NAME for w in low.split()):
+        return False
+    # A name has to contain a word-like run of letters, not just initials/digits.
+    return bool(re.search(r"[A-Za-z]{3}", name)) and not re.search(r"\d", name)
+
+
 def _judge_lookup_keys(judges: Sequence[str]) -> List[str]:
     """Full name AND surname, lower-cased, so `judge:chandrachud` resolves.
 
-    Deliberately duplicated from metadata.judge_keys' behaviour rather than
-    imported-and-mutated, because the judge list reaching here may be M1's
-    PDF-parsed one, which has not been through the metadata normaliser.
-    """
-    from nyaya.metadata import judge_keys as _keys
-    from nyaya.metadata import clean_judge
+    The list reaching here is usually M1's PDF-parsed bench, which has *not* been
+    through the metadata normaliser and is noisier than the metadata column: the
+    CORAM parse occasionally runs into the surrounding prose, and the OCR glues
+    "AND Y.V." into "ANDY. V.".  Both are repaired here rather than in M1's
+    module, because this field is mine and a bad key is a silently wrong filter
+    result.  Rejected strings are simply not indexed.
 
-    cleaned = [clean_judge(j) for j in judges if str(j).strip()]
-    return sorted(set(_keys([c for c in cleaned if c])))
+    Known limitation, worth stating in the report: the surname key deliberately
+    conflates judges who share a surname — ``judge:chandrachud`` returns both
+    Y.V. Chandrachud (1970s-80s) and his son D.Y. Chandrachud (2016-2024).  The
+    full-name key ``judge:"d.y. chandrachud"`` separates them, and the UI should
+    offer it.
+    """
+    from nyaya.metadata import clean_judge
+    from nyaya.metadata import judge_keys as _keys
+
+    cleaned: List[str] = []
+    for raw in judges:
+        s = str(raw).strip()
+        if not s:
+            continue
+        for part in re.split(r"\s+AND\s+", _GLUED_AND_RE.sub(r"AND \1. ", s),
+                             flags=re.IGNORECASE):
+            c = clean_judge(part)
+            if _plausible_judge(c):
+                cleaned.append(c)
+    return sorted(set(_keys(cleaned)))
 
 
 def _invert_sets(per_doc: Sequence[Sequence[str]]) -> Dict[str, np.ndarray]:
