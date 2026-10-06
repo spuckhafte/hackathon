@@ -166,12 +166,13 @@ def judge_keys(judges: Sequence[str]) -> List[str]:
 _NEUTRAL_RE = re.compile(r"(?i)\b(\d{4})\s*INSC\s*(\d+)\b")
 _SCR_RE = re.compile(
     r"""(?ix)
-    \[?\s*(\d{4})\s*\]?        # year
-    \s*(?:\(\s*\d+\s*\)\s*)?   # occasional supplement marker
-    \s*(\d+)                   # volume
-    \s*S\.?\s*C\.?\s*R\.?      # S.C.R.
+    \[?\s*(\d{4})\s*\]?             # year
+    \s*(supp(?:l)?\.?|suppl?ement)? # 20.5% of rows are supplement volumes:
+                                    #   "[1959] SUPP. 1 S.C.R. 10"
+    \s*\(?\s*(\d+)\s*\)?            # volume
+    \s*S\.?\s*C\.?\s*R\.?           # S.C.R.
     \s*(?:\(\s*\w+\s*\)\s*)?
-    \s*(\d+)                   # first page
+    \s*(\d+)                        # first page
     """
 )
 
@@ -185,13 +186,19 @@ def normalise_neutral(raw: str) -> str:
 
 
 def normalise_scr(raw: str) -> str:
-    """``"[2017] 11 S.C.R. 1029"`` -> ``"SCR:2017:11:1029"``.  Exact-lookup key."""
+    """``"[2017] 11 S.C.R. 1029"`` -> ``"SCR:2017:11:1029"``.  Exact-lookup key.
+
+    A supplement volume gets its own volume token so it cannot collide with the
+    regular volume of the same number:
+    ``"[1959] SUPP. 1 S.C.R. 10"`` -> ``"SCR:1959:S1:10"``.
+    """
     if not raw:
         return ""
     m = _SCR_RE.search(str(raw))
     if not m:
         return ""
-    return f"SCR:{m.group(1)}:{int(m.group(2))}:{int(m.group(3))}"
+    vol = f"S{int(m.group(3))}" if m.group(2) else str(int(m.group(3)))
+    return f"SCR:{m.group(1)}:{vol}:{int(m.group(4))}"
 
 
 # --------------------------------------------------------------------------
@@ -719,10 +726,18 @@ def node_id_by_key(universe: Optional[pd.DataFrame] = None) -> Dict[str, int]:
 
     Both key spaces live in one dict because they cannot collide: a neutral key
     is ``\\d{4}INSC\\d+`` and an SCR key starts with ``SCR:``.
+
+    SCR keys are inserted first and are authoritative: they are 100% populated
+    and perfectly unique over the universe.  Neutral keys are 99.8% populated
+    but 116 of them are shared by two judgments (the same INSC number issued for
+    a batch disposed together), so they are inserted with ``setdefault`` and the
+    lowest ``node_id`` wins.  Wave-2 resolution therefore tries ``scr`` before
+    ``neutral`` before name matching, and records which in
+    ``CitationEdge.resolved_by``.
     """
     uni = load_universe() if universe is None else universe
     out: Dict[str, int] = {}
-    for key_col in ("neutral_key", "scr_key"):
+    for key_col in ("scr_key", "neutral_key"):
         for k, n in zip(uni[key_col], uni["node_id"]):
             if k:
                 out.setdefault(str(k), int(n))
@@ -761,6 +776,12 @@ def stats(verbose_build: bool = False) -> Dict[str, Any]:
         "neutral_key_coverage": float((uni["neutral_key"].str.len() > 0).mean()),
         "scr_cite_coverage": float((uni["scr_cite"].str.len() > 0).mean()),
         "scr_key_coverage": float((uni["scr_key"].str.len() > 0).mean()),
+        "neutral_key_collisions": int(
+            uni.loc[uni["neutral_key"] != ""].duplicated(subset=["neutral_key"]).sum()
+        ),
+        "scr_key_collisions": int(
+            uni.loc[uni["scr_key"] != ""].duplicated(subset=["scr_key"]).sum()
+        ),
         "date_parse_failures": int((uni["decision_date"].str.len() == 0).sum()),
         "disposal_coverage": float((uni["disposal"].str.len() > 0).mean()),
         "case_type_coverage_meta": float((uni["case_type"].str.len() > 0).mean()),
@@ -813,10 +834,13 @@ def print_stats(s: Dict[str, Any]) -> None:
       f"   normalised key: {s['neutral_key_coverage']:.2%}")
     p(f"  SCR cite (`[2017] 11 S.C.R. 1029`): {s['scr_cite_coverage']:.2%}"
       f"   normalised key: {s['scr_key_coverage']:.2%}")
-    p("  -> nearly every node is addressable by an EXACT key, so a citation")
-    p("     found in judgment text resolves by dictionary lookup with no")
-    p("     false positives; fuzzy case-name Jaccard (threshold "
-      f"{config.CITATION_NAME_THRESHOLD}) is only the fallback.")
+    p(f"  key collisions                  : scr {s['scr_key_collisions']},"
+      f" neutral {s['neutral_key_collisions']}")
+    p("  -> every node is addressable by an EXACT key, so a citation found in")
+    p("     judgment text resolves by dictionary lookup with no false")
+    p("     positives.  SCR keys are unique, so resolution order is")
+    p("     scr -> neutral -> fuzzy case-name Jaccard (threshold "
+      f"{config.CITATION_NAME_THRESHOLD}, the fallback only).")
     p("")
     p(f"date-parse failures      : {s['date_parse_failures']:,}  "
       f"(decision_date DD-MM-YYYY -> ISO)")
