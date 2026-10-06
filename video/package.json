@@ -1,0 +1,28 @@
+{
+  "name": "nyayatrace-video",
+  "version": "1.0.0",
+  "private": true,
+  "description": "NyayaTrace demo video (CSD358 IR mid-term hackathon, Track T6)",
+  "scripts": {
+    "start": "remotion studio",
+    "studio": "remotion studio",
+    "build": "remotion render NyayaTrace out/NyayaTrace.mp4 --concurrency=2",
+    "render": "remotion render NyayaTrace out/NyayaTrace.mp4 --concurrency=2",
+    "still": "remotion still NyayaTrace out/still.png",
+    "upgrade": "remotion upgrade",
+    "timeline": "node scripts/timeline.mjs"
+  },
+  "dependencies": {
+    "@remotion/cli": "4.0.533",
+    "@remotion/shapes": "4.0.533",
+    "@remotion/google-fonts": "4.0.533",
+    "react": "19.1.0",
+    "react-dom": "19.1.0",
+    "remotion": "4.0.533"
+  },
+  "devDependencies": {
+    "@types/react": "19.1.0",
+    "@types/react-dom": "19.1.0",
+    "typescript": "5.8.3"
+  }
+}
