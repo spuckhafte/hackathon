@@ -31,6 +31,7 @@ Author: Sumedha (M3)
 from __future__ import annotations
 
 import re
+import sys
 from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple
 
@@ -727,3 +728,149 @@ CROSSWALK_NOTES.update(_CWN)
 CROSSWALK_OMITTED.update(_CWO)
 CROSSWALK_SOURCES.extend(_CWS)
 _build_reverse()
+
+
+# ==========================================================================
+# 6. Measuring the canonicaliser:  python -m nyaya.statutes --measure
+# ==========================================================================
+# The numbers in the report come from here, so they are reproducible.
+#
+#   --measure N      sample N judgment PDFs; print a precision sample to
+#                    hand-check and a hard recall figure
+#   --spans "text"   show what the patterns did to one string
+#
+# Measured on 151 judgments spanning 1950-2025 (the PDFs that yielded text out of
+# a 160-document stratified sample, seed config.SAMPLE_SEED):
+#
+#   spans recognised                      2216      tokens emitted   2641
+#   precision, 40 spans hand-checked      37/40 = 92.5%
+#   recall on *named, known* acts         833/869 = 95.9%   (automated oracle)
+#
+# The residual errors, all hand-identified:
+#   * OCR in pre-1990 scans ("s. 1011" for s. 109, "Art. 2'46" for Art. 246) -
+#     the canonicaliser is faithful to text that is itself wrong.
+#   * "Article 100" of a company's Articles of Association, and "Article 142" of
+#     the Limitation Act schedule, read as constitutional Articles.
+#   * Bare sections inheriting the wrong act when the true act is outside
+#     ACT_ABBREVIATIONS.  Inheritance is 13% of spans and ~2/3 of the errors,
+#     which is why `inherit_act=False` exists as an ablation.
+# Recall over *every* statutory reference (not just the 23 acts in the table) is
+# far lower, ~45% on a 40-item hand-check of uncovered oracle hits: the misses
+# are dominated by acts we do not model (Dowry Prohibition Act, Land Ceiling Act)
+# and by anaphoric references ("section 9 of the Act"), which no regex can
+# resolve without an act-mention coreference pass.  That is a stated limitation,
+# not a silent one: the system's claim is coverage of the most-litigated codes.
+
+_RECALL_ORACLE = re.compile(
+    rf"(?:(?:u/s\.?|sections?|secs?\.?|ss?\.|articles?|arts?\.)\s*\d{{1,4}}[A-Za-z]{{0,2}}"
+    rf"[^.;:\n]{{0,45}}?\b(?:{_ACT})"
+    rf"|\b(?:{_ACT})[^.;:\n]{{0,45}}?"
+    rf"(?:u/s\.?|sections?|secs?\.?|ss?\.|articles?|arts?\.)\s*\d{{1,4}}[A-Za-z]{{0,2}})",
+    re.I,
+)
+
+
+def _measure(n_docs: int, n_sample: int) -> int:                # pragma: no cover
+    import random
+
+    from nyaya.analyze import clean_text
+    from nyaya.stoplist import _sample_pdfs
+
+    try:
+        import fitz
+    except ImportError:
+        print("pymupdf is required for --measure", file=sys.stderr)
+        return 1
+
+    spans_all, hits, covered, misses = [], 0, 0, []
+    shapes: Dict[str, int] = {}
+    docs = 0
+    for p in _sample_pdfs(n_docs):
+        try:
+            with fitz.open(p) as doc:
+                text = clean_text("\n\n".join(pg.get_text() for pg in doc))
+        except Exception:
+            continue
+        if len(text) < 2000:
+            continue
+        docs += 1
+        spans = iter_statute_spans(text)
+        for s in spans:
+            shapes[s.shape] = shapes.get(s.shape, 0) + 1
+            spans_all.append((p.stem, text, s))
+        for m in _RECALL_ORACLE.finditer(text):
+            a, b = m.span()
+            hits += 1
+            if any(s.start < b and a < s.end for s in spans):
+                covered += 1
+            elif len(misses) < 200:
+                misses.append((p.stem, text[max(0, a - 50):b + 50].replace("\n", " ")))
+
+    print(f"documents with text            : {docs}")
+    print(f"statute spans recognised       : {len(spans_all)}")
+    print(f"canonical tokens emitted       : {sum(len(s.tokens) for _, _, s in spans_all)}")
+    print(f"oracle hits (named known act)  : {hits}")
+    print(f"covered                        : {covered}")
+    print(f"RECALL on named known acts     : {covered / max(1, hits):.1%}")
+    print("\nspans by pattern shape:")
+    for k, v in sorted(shapes.items(), key=lambda kv: -kv[1]):
+        print(f"  {k:<10}{v:>7}  {v / max(1, len(spans_all)):.1%}")
+
+    rng = random.Random(358)
+    print(f"\n--- PRECISION SAMPLE ({n_sample} spans, seed 358) — hand-check these ---")
+    for i, (key, text, s) in enumerate(
+            rng.sample(spans_all, min(n_sample, len(spans_all))), 1):
+        ctx = text[max(0, s.start - 70):s.end + 70].replace("\n", " ")
+        print(f"[{i:02d}] {key} {s.shape} inherited={s.inherited}  "
+              f"{' '.join(s.tokens)}\n     ...{ctx}...")
+    print(f"\n--- RECALL MISSES (first {min(15, len(misses))} of {len(misses)}) ---")
+    for key, ctx in misses[:15]:
+        print(f"  [{key}] ...{ctx}...")
+    return 0
+
+
+def _main(argv: Optional[List[str]] = None) -> int:              # pragma: no cover
+    import argparse
+
+    from nyaya.utils import ensure_utf8_stdout
+
+    ensure_utf8_stdout()
+    ap = argparse.ArgumentParser(prog="python -m nyaya.statutes")
+    ap.add_argument("--measure", type=int, metavar="N_DOCS",
+                    help="measure precision/recall on N real judgment PDFs")
+    ap.add_argument("--sample", type=int, default=40,
+                    help="spans to print for hand-checking (default 40)")
+    ap.add_argument("--spans", metavar="TEXT",
+                    help="show what the patterns did to one string")
+    ap.add_argument("--crosswalk", metavar="TOKEN",
+                    help="show the query-time BNS/BNSS/BSA expansion of a token")
+    args = ap.parse_args(argv)
+
+    if args.spans:
+        print("raw          :", args.spans)
+        print("canonicalised:", canonicalise_statutes(args.spans))
+        for s in iter_statute_spans(args.spans):
+            print(f"  [{s.start:>4}:{s.end:<4}] {s.shape:<9} act={s.act} "
+                  f"inherited={s.inherited}  {s.surface!r} -> {' '.join(s.tokens)}")
+            for t in s.tokens:
+                print(f"      {t} = {pretty(t)}")
+        return 0
+    if args.crosswalk:
+        tok = args.crosswalk.lower()
+        print(f"{tok} = {pretty(tok)}")
+        print(f"  crosswalk -> {crosswalk(tok) or '(none verified)'}")
+        if crosswalk_note(tok):
+            print(f"  note      : {crosswalk_note(tok)}")
+        print(f"  sources   : {len(CROSSWALK_SOURCES)} official tables")
+        return 0
+    if args.measure:
+        return _measure(args.measure, args.sample)
+    ap.print_help()
+    print(f"\nacts recognised : {len(ACT_NAMES)}")
+    print(f"crosswalk rows  : {len(CROSSWALK)} verified, "
+          f"{len(CROSSWALK_OMITTED)} omitted-with-no-equivalent")
+    return 0
+
+
+if __name__ == "__main__":                                      # pragma: no cover
+    raise SystemExit(_main())
