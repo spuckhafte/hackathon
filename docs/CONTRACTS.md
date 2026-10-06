@@ -22,7 +22,7 @@ files are `nyaya/config.py`, `nyaya/contracts.py`, `nyaya/utils.py` and
 ```
 data/raw/metadata/{year}.parquet        # straight from the public bucket
 data/raw/pdf/{year}/{path}_EN.pdf       # downloaded judgment PDFs
-data/processed/universe.parquet         # ALL 42,371 English judgments -> graph nodes
+data/processed/universe.parquet         # ALL 37,210 English judgments -> graph nodes
 data/processed/manifest.parquet         # the stratified subset we index
 data/processed/judgments.jsonl          # one JudgmentRecord per line (zoned, cleaned)
 data/processed/extract_log.csv          # one row per attempted document, with drop reason
@@ -34,7 +34,7 @@ eval/queries/                           # hand-written query sets and qrels
 ### Corpus policy (decided at kick-off, document it in the README)
 
 * **Universe** — every English judgment in the AWS Open Data release,
-  1950–2025, 42,371 rows after de-duplication on `path`. These are the *nodes*
+  1950-2025, **37,210 rows** after de-duplication on `path` (42,371 English rows before dedup; 5,161 are the same judgment scraped once per available language). These are the *nodes*
   of the citation graph and the source of parametric facts, whether or not we
   hold their text.
 * **Indexed subset** — a stratified sample of at most `config.PER_YEAR_CAP`
@@ -43,7 +43,7 @@ eval/queries/                           # hand-written query sets and qrels
   with equal temporal coverage, so the Court's whole history is searchable
   rather than only the last decade.
 * The sampling rate (≈28% in busy years, 100% in the 1950s) is a **known
-  limitation**: a cited precedent is only retrievable if it was sampled, which
+  limitation**: a cited precedent is only retrievable if it was sampled (manifest is 37.5% of the universe), which
   caps citation-recovery recall. Say so in the report; do not hide it.
 
 ## 3. Stores
@@ -139,3 +139,23 @@ e.g. `Rakshit - feat: SPIMI block inversion with numpy int32 postings`
   scores) — that is what the demo video must show.
 * Its behaviour is explainable in two sentences without saying "the library
   does it".
+
+## 8. Wave-2 facts established by the metadata pass (Suvrat)
+
+* Universe after de-duplication on `path`: **37,210** nodes. Indexed manifest:
+  **13,942** documents (37.5%). Quote these numbers, not 42,371.
+* **Citation resolution order is `scr` -> `neutral` -> fuzzy name Jaccard.**
+  100.00% of universe nodes carry an SCR citation whose normalised key is
+  unique (0 collisions); 99.81% carry a neutral citation (116 key collisions,
+  one INSC number issued for a batch). Exact keys therefore resolve nearly
+  everything and `config.CITATION_NAME_THRESHOLD` matching is a last resort,
+  not the main path. `metadata.node_id_by_key()` returns the combined lookup.
+* **`bench_size` vs `bench_size_meta`.** 87.4% of metadata rows name a single
+  judge, because the column holds the *authoring* judge, not the bench. The
+  real bench size comes from Rakshit's CORAM / `[... , JJ.]` parse of the PDF.
+  Anything that scores authority must read the merged `bench_size` via
+  `metadata.merge_from_record()`; reading `bench_size_meta` makes every
+  judgment look like a one-judge bench and turns `config.G_BENCH_WEIGHT` into
+  noise.
+* `acts` is the only parametric field metadata cannot populate: it comes from
+  Sumedha's `canonicalise_statutes()` at S2 build time.

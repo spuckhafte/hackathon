@@ -10,3 +10,4 @@ requests>=2.31         # bulk download over public HTTPS (no AWS account needed)
 tqdm>=4.66             # progress bars for the long build
 networkx>=3.2          # PageRank cross-check ONLY; our own power iteration is used
 streamlit>=1.30        # optional single-page UI (not graded)
+pytest>=7.4            # tests (dev)
