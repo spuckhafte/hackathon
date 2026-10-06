@@ -421,3 +421,107 @@ def test_build_record_tolerates_nan_strings_from_pandas():
     )
     assert rec.neutral_cite == "2024 INSC 735"
     assert "Criminal Appeal No. 1031" in rec.case_no
+
+
+# --------------------------------------------------------------------------
+# Judge-name validation  (tightened after Member 2 reported prose in `judges`)
+# --------------------------------------------------------------------------
+
+
+@pytest.mark.parametrize("glued, expected", [
+    ("B.N. KIRPAL ANDS. RAJENDRA BABU, JJ.",
+     ["B.N. KIRPAL", "S. RAJENDRA BABU"]),
+    ("P. N. BHAGWATI ANDS. MURTAZA FAZAL ALI, JJ.",
+     ["P. N. BHAGWATI", "S. MURTAZA FAZAL ALI"]),
+    ("K. SUBBA RAO A.ND K. N. WANCHOO, JJ.",
+     ["K. SUBBA RAO", "K. N. WANCHOO"]),
+])
+def test_ocr_glued_conjunction_still_splits_two_judges(glued, expected):
+    # "AND S." printed as "ANDS." used to read as one judge, which undercounts
+    # the bench - and bench size is exactly what g(d) reads.
+    assert zones.parse_judges(glued) == expected
+
+
+@pytest.mark.parametrize("name", [
+    "CHANDRACHUD",          # contains AND but not at a word boundary
+    "DR. A.S. ANAND",
+    "ANAND",
+])
+def test_the_glued_and_split_does_not_cut_a_real_name(name):
+    assert zones.parse_judges(f"{name}, J.") == [name]
+
+
+@pytest.mark.parametrize("prose", [
+    "1951. March 19. The judgment of the Court was delivered by MuKHERJEA J.",
+    "(with him) for the respondent. Rai Brij Raj Krishna J.",
+    "a) of the Press Emergency Act. DAs J.",
+    'i) stated that "The choice of a close day shall rest with the owner J.',
+    "1)-that no return was filed at any stage Bose J.",
+])
+def test_prose_ending_in_a_judge_title_is_not_a_bench_line(prose):
+    assert zones.looks_like_judge_line(prose) is False
+    assert zones.find_bench(prose) == ("", "none")
+
+
+@pytest.mark.parametrize("body", [
+    "A. K. SIKRI AND ASHOK BHUSHAN, JJ.",
+    "Bela M. Trivedi and Satish Chandra Sharma,* JJ.",
+    "SHRI HARILAL KANIA C.J., SAIYID FAZL ALI, PATANJALI SASTRI, JJ.",
+])
+def test_a_real_bench_line_still_passes_the_prose_filter(body):
+    assert zones.looks_like_judge_line(body) is True
+    assert len(zones.parse_judges(body)) >= 2
+
+
+def test_ocr_digit_substitutions_do_not_lose_a_real_judge():
+    # The 1950s scans print l as 1 and O as 0 constantly.  Rejecting any name
+    # with a digit threw away 1,826 genuine judge entries, so only a *run* of
+    # digits (a year, a section number) disqualifies a name.
+    for name in ("SHR1 HARILAL KANg", "SA1Ym FAzL Au", "HARILAL KANIA c . .1"):
+        assert zones.is_plausible_name(name) is True
+    for junk in ("1980 v. chandrachud", "Suit No. 7 of 1950"):
+        assert zones.is_plausible_name(junk) is False
+
+
+def test_coram_line_is_validated_like_a_bracketed_one():
+    # The CORAM branch had no validation at all, which is where the worst of the
+    # measured noise came from.
+    assert zones.find_bench("CORAM: the judgment of the Court was delivered "
+                            "by MAHAJAN J.") == ("", "none")
+    body, src = zones.find_bench("CORAM: A. K. Sikri and Ashok Bhushan, JJ.")
+    assert src == "coram" and len(zones.parse_judges(body)) == 2
+
+
+def test_is_plausible_name_rejects_prose_and_accepts_names():
+    assert zones.is_plausible_name("for the respondent") is False
+    assert zones.is_plausible_name("the judgment of the court") is False
+    assert zones.is_plausible_name("A. K. SIKRI") is True
+    assert zones.is_plausible_name("Nongmeikapam Kotiswar Singh") is True
+
+
+def test_reparse_bench_downgrades_prose_to_unknown(tmp_path):
+    """A prose bench becomes 'unknown', not a judge called 'for the respondent'."""
+    import json
+
+    src = tmp_path / "judgments.jsonl"
+    rows = [
+        {"doc_id": 1, "bench_size": 2, "judges": ["A. K. SIKRI", "ASHOK BHUSHAN"],
+         "zones": {"bench": "A. K. SIKRI AND ASHOK BHUSHAN, JJ."}},
+        {"doc_id": 2, "bench_size": 2,
+         "judges": ["for the respondent", "Rai Brij Raj Krishna"],
+         "zones": {"bench": "with him) for the respondent. Rai Brij Raj Krishna J."}},
+        {"doc_id": 3, "bench_size": 3, "judges": ["X", "Y", "Z"],
+         "zones": {"bench": ""}},          # came from the metadata fallback
+    ]
+    src.write_text("\n".join(json.dumps(r) for r in rows) + "\n", encoding="utf-8")
+    stats = zones.reparse_bench(src)
+    assert stats["bench_kept"] == 1
+    assert stats["bench_cleared"] == 1
+    assert stats["bench_from_metadata"] == 1
+
+    out = [json.loads(l) for l in src.read_text(encoding="utf-8").splitlines()]
+    assert out[0]["judges"] == ["A. K. SIKRI", "ASHOK BHUSHAN"]
+    assert out[1]["judges"] == [] and out[1]["bench_size"] == 0
+    assert out[1]["zones"]["bench"] == ""
+    # the metadata-sourced record is left exactly as it was
+    assert out[2]["judges"] == ["X", "Y", "Z"] and out[2]["bench_size"] == 3

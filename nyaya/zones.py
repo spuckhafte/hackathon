@@ -138,6 +138,44 @@ MAX_BENCH_CHARS = 250
 #: own initial, and matching case-insensitively would throw her bench away.
 _BENCH_REJECT_PARTY = re.compile(r"\s+(?:v\.|vs\.?|versus)\s+")
 _BENCH_NAME_SPLIT = re.compile(r",|;|\band\b|\bAND\b|&", re.I)
+#: OCR glues the conjunction to the next judge's initial: "B.N. KIRPAL ANDS.
+#: RAJENDRA BABU", "P. N. BHAGWATI ANDS. MURTAZA FAZAL ALI", "AND Y.V." read as
+#: "ANDY. V.".  Without this they become one judge instead of two, so the bench
+#: is undercounted - which is exactly the number g(d) depends on.  Safe against
+#: real names because \bAND needs a word boundary: the "AND" inside "CHANDRACHUD"
+#: and "ANAND" is preceded by a letter and never matches.
+_GLUED_AND_SPLIT = re.compile(r"\bA\s*\.?\s*ND(?=\s*[A-Z]\s*\.)")
+
+#: Words that appear in the reports' prose but never inside a judge's name.
+#: Measured: 443 of 34,682 judge entries in the built corpus were prose that a
+#: "(" -opened candidate had swallowed up to a trailing "J." - e.g. "1951.
+#: February 5. The judgment of the Court was delivered by MAHAJAN".  Rejecting
+#: the whole candidate is right: a prose span is not a judge line at all, and
+#: falling back to Member 2's metadata beats inventing a judge called
+#: "for the respondent".
+_PROSE_WORDS = re.compile(
+    r"\b(?:judgment|judgement|court|delivered|behalf|respondent|respondents"
+    r"|appellant|appellants|petitioner|counsel|appeal|appeals|suit|held|also"
+    r"|hereby|himself|herself|entitled|relief|per\s+curiam|february|january"
+    r"|march|april|june|july|august|september|october|november|december"
+    r"|with\s+him|for\s+the|of\s+the|was\s+|were\s+|not\s+|shall|stated"
+    r"|whether|under|section|article)\b", re.I)
+
+#: Typography that only prose has: a quotation mark, an ellipsis, or a leading
+#: enumerator ("i) stated that ...", "a) of the Press Emergency Act").
+_PROSE_SHAPE = re.compile(r"[\"\u201c\u201d]|\.\s*\.\s*\.|^\s*[a-z0-9]{1,3}\s*[)\]]")
+
+#: A judge's name: at most this many words and characters.  The longest real one
+#: in the corpus is "Nongmeikapam Kotiswar Singh" (3 words, 27 characters).
+MAX_NAME_WORDS = 8
+MAX_NAME_CHARS = 52
+
+#: A *run* of digits, not a single digit.  The 1950s scans substitute 1 for l and
+#: 0 for O constantly - "SHR1 HARILAL KANg", "SA1Ym FAzL Au", "HARILAL KANIA c .
+#: .1" are all real judges - so rejecting any name containing a digit threw away
+#: 1,826 genuine judge entries.  A two-digit run, by contrast, is a year or a
+#: section number and really is not part of a name.
+_DIGIT_RUN = re.compile(r"\d{2,}")
 _HAS_NAME = re.compile(r"[A-Za-z]{2,}")
 
 # --- paragraph numbering --------------------------------------------------
@@ -251,6 +289,45 @@ def _clean_name(frag: str) -> str:
     return frag
 
 
+def is_plausible_name(name: str) -> bool:
+    """Could ``name`` be a judge's name?  Shape only, no lexicon.
+
+    Three cheap rules, each from a measured failure: no prose word, no more than
+    :data:`MAX_NAME_WORDS` words, no multi-digit run.  A name lexicon would be
+    better but would have to cover 76 years of the Court's judges; shape removes
+    the measured prose entries without that maintenance burden, and it is tuned
+    *loose* on purpose - an over-merged OCR name is a smaller error than a lost
+    judge, because bench size is what g(d) reads.
+    """
+    name = name.strip()
+    if not name or len(name) > MAX_NAME_CHARS:
+        return False
+    if len(name.split()) > MAX_NAME_WORDS:
+        return False
+    if _DIGIT_RUN.search(name):
+        return False
+    if _PROSE_WORDS.search(name):
+        return False
+    return True
+
+
+def looks_like_judge_line(body: str) -> bool:
+    """Is ``body`` a bench line at all, or prose that ends in a "J."?
+
+    Applied to both the bracket candidates *and* the CORAM line.  The CORAM
+    branch previously had no validation at all, which is where the worst of the
+    measured noise came from.
+    """
+    if not body or len(body) > MAX_BENCH_CHARS:
+        return False
+    if (SCR_RE.search(body) or NEUTRAL_RE.search(body)
+            or _BENCH_REJECT_PARTY.search(body) or CASE_NO_RE.search(body)):
+        return False
+    if _PROSE_WORDS.search(body) or _PROSE_SHAPE.search(body):
+        return False
+    return True
+
+
 def parse_judges(bench_text: str) -> List[str]:
     """Split a judge line into names, dropping the judicial titles.
 
@@ -261,6 +338,7 @@ def parse_judges(bench_text: str) -> List[str]:
     """
     text = bench_text.strip().strip("[]()")
     text = _TITLE_TAIL_RE.sub("", text)
+    text = _GLUED_AND_SPLIT.sub(" and ", text)
     names: List[str] = []
     for frag in _BENCH_NAME_SPLIT.split(text):
         name = _clean_name(frag)
@@ -270,6 +348,8 @@ def parse_judges(bench_text: str) -> List[str]:
         if flat in _TITLE_TOKENS or len(flat) < 3:
             continue
         if flat in ("shri", "smt", "dr", "justice", "honble", "hon'ble"):
+            continue
+        if not is_plausible_name(name):
             continue
         names.append(name)
     # de-duplicate, preserving order
@@ -330,8 +410,9 @@ def find_bench(header_text: str) -> Tuple[str, str]:
     """
     coram = _CORAM_RE.search(header_text)
     if coram:
-        body = coram.group("body").strip()
-        if _HAS_NAME.search(body):
+        body = " ".join(coram.group("body").split())
+        if _HAS_NAME.search(body) and looks_like_judge_line(body) \
+                and parse_judges(body):
             return body, "coram"
 
     opens = sorted(i for i, ch in enumerate(header_text) if ch in _BENCH_OPENERS)
@@ -355,8 +436,14 @@ def find_bench(header_text: str) -> Tuple[str, str]:
                 body = body[inner + 1:].strip()
                 if not body or not _TITLE_TAIL_RE.search(body):
                     continue
-            if (SCR_RE.search(body) or NEUTRAL_RE.search(body)
-                    or _BENCH_REJECT_PARTY.search(body) or CASE_NO_RE.search(body)):
+            # A judge line contains none of the other header fields and no
+            # prose.  Without the field tests the citation's own "[" wins.
+            # Without the prose test a "(" in the body of the report opens a
+            # candidate that runs on to the next "J." - "(with him) for the
+            # respondent. 1951. March 19. The judgment of the Court was
+            # delivered by MuKHERJEA J." became a judge called "for the
+            # respondent".
+            if not looks_like_judge_line(body):
                 continue
             names = parse_judges(body)
             # Two guards against a false positive, now that a bare "(" can open
@@ -860,3 +947,123 @@ def build_record(doc_id: int, source_path: str, year: int, text: str,
     info = seg.info()
     info["bench_source"] = bench_src
     return rec, info
+
+# ==========================================================================
+# 6. Re-validating the bench of an already-built corpus
+# ==========================================================================
+
+def reparse_bench(src=None, dry_run: bool = False) -> Dict[str, object]:
+    """Re-validate ``judges`` / ``bench_size`` in ``judgments.jsonl`` in place.
+
+    The bench *text* is already stored in every record's ``bench`` zone, so the
+    stricter validators can be re-applied without re-extracting a single PDF -
+    a one-minute pass instead of a twenty-minute rebuild.
+
+    A record whose stored bench zone turns out to be prose is set to
+    ``judges = []``, ``bench_size = 0`` and an empty bench zone.  That is a
+    deliberate downgrade from "wrong" to "unknown": Member 2's
+    ``bench_size_meta`` then supplies the fallback, and a judge called
+    "for the respondent" stops appearing in the ``judge:`` facet.
+    """
+    import json
+    import os
+    from pathlib import Path
+
+    from nyaya.utils import read_jsonl
+
+    src = Path(src or config.JUDGMENTS_JSONL)
+    stats = {
+        "records": 0,
+        "bench_kept": 0,
+        "bench_cleared": 0,
+        "judges_before": 0,
+        "judges_after": 0,
+        "judges_dropped": 0,
+        "bench_size_changed": 0,
+        "bench_from_metadata": 0,
+    }
+    cleared_examples: List[str] = []
+    changed_examples: List[str] = []
+    rows: List[Dict[str, object]] = []
+
+    for row in read_jsonl(src):
+        stats["records"] += 1
+        before = list(row.get("judges") or [])
+        stats["judges_before"] += len(before)
+        bench_text = " ".join(str((row.get("zones") or {}).get("bench") or "").split())
+        if not bench_text:
+            # No bench line was ever found for this judgment, so its judges came
+            # from Member 2's metadata fallback.  There is nothing here to
+            # re-validate and wiping them would lose real information.
+            stats["bench_from_metadata"] += 1
+            stats["judges_after"] += len(before)
+            rows.append(row) if not dry_run else None
+            continue
+        names = parse_judges(bench_text) if looks_like_judge_line(bench_text) else []
+        if names:
+            stats["bench_kept"] += 1
+        elif bench_text:
+            stats["bench_cleared"] += 1
+            if len(cleared_examples) < 8:
+                cleared_examples.append(f"{row['doc_id']}: {bench_text[:80]}")
+        stats["judges_after"] += len(names)
+        if len(names) != int(row.get("bench_size") or 0):
+            stats["bench_size_changed"] += 1
+            if len(changed_examples) < 8:
+                changed_examples.append(
+                    f"{row['doc_id']}: {row.get('bench_size')} -> {len(names)}  "
+                    f"{before[:2]} -> {names[:2]}")
+        row["judges"] = names
+        row["bench_size"] = len(names)
+        if not names:
+            zones_d = dict(row.get("zones") or {})
+            zones_d["bench"] = ""
+            row["zones"] = zones_d
+        if not dry_run:
+            rows.append(row)
+
+    stats["judges_dropped"] = stats["judges_before"] - stats["judges_after"]
+    stats["cleared_examples"] = cleared_examples
+    stats["changed_examples"] = changed_examples
+    if dry_run:
+        return stats
+
+    tmp = src.with_suffix(".jsonl.tmp")
+    with tmp.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row, ensure_ascii=False))
+            fh.write("\n")
+    os.replace(tmp, src)
+    stats["written"] = str(src)
+    return stats
+
+
+def main(argv: Optional[Sequence[str]] = None) -> int:
+    import argparse
+
+    from nyaya.utils import ensure_utf8_stdout
+
+    ensure_utf8_stdout()
+    ap = argparse.ArgumentParser(
+        prog="python -m nyaya.zones",
+        description="Zone-segmentation utilities (Member 1).")
+    ap.add_argument("--reparse-bench", action="store_true",
+                    help="re-validate judges/bench_size in judgments.jsonl")
+    ap.add_argument("--dry-run", action="store_true",
+                    help="report what would change without writing")
+    args = ap.parse_args(argv)
+    if not args.reparse_bench:
+        ap.error("nothing to do; pass --reparse-bench")
+    out = reparse_bench(dry_run=args.dry_run)
+    for k, v in out.items():
+        if isinstance(v, list):
+            print(f"{k}:")
+            for item in v:
+                print(f"    {item}")
+        else:
+            print(f"{k}: {v}")
+    return 0
+
+
+if __name__ == "__main__":
+    raise SystemExit(main())
