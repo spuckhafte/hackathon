@@ -441,6 +441,10 @@ def iter_extractions(tasks: Sequence[Tuple[int, int, str]],
                 dt = time.perf_counter() - t0
                 print(f"  extracted {done}/{len(tasks)}  "
                       f"{done / max(dt, 1e-9):.1f} doc/s", file=sys.stderr, flush=True)
+                if fh is not None:
+                    # Flush periodically: a 20-minute build that dies at minute
+                    # 18 should still leave a readable coverage log behind.
+                    fh.flush()
             yield ex
     finally:
         if processes > 1:
