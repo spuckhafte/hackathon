@@ -413,8 +413,9 @@ def plot_heaps(growth: Dict, index_vocab: Optional[int] = None,
         pred = heaps_predict(fs, index_tokens)
         ax.annotate(
             f"fit extrapolates to {pred:,.0f}\n({pred / index_vocab - 1:+.0%} vs built)",
-            xy=(index_tokens, index_vocab), xytext=(-12, -58),
-            textcoords="offset points", ha="right", fontsize=9.5, color=INK_2,
+            xy=(index_tokens, index_vocab), xytext=(-16, -132),
+            textcoords="offset points", ha="right", va="top", fontsize=9.5,
+            color=INK_2,
             arrowprops=dict(arrowstyle="-", color=AXIS, linewidth=0.9))
 
     leg = ax.legend(loc="upper left", frameon=False, fontsize=10,
@@ -473,7 +474,8 @@ def plot_zipf(index, out: Path = None) -> Path:
                 ha="left", va="top")
     hapax = int((order == 1).sum())
     ax.text(0.99, 0.95,
-            f"{order.size:,} terms\n{hapax:,} appear once ({hapax / order.size:.0%})",
+            f"{order.size:,} terms\n{hapax:,} occur exactly once in the\n"
+            f"whole collection ({hapax / order.size:.0%} of the vocabulary)",
             transform=ax.transAxes, ha="right", va="top", fontsize=9.5, color=INK_2)
     leg = ax.legend(loc="lower left", frameon=False, fontsize=10)
     for t in leg.get_texts():
