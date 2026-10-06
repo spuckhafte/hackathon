@@ -561,7 +561,7 @@ def stats() -> Dict[str, Any]:
             paras += len(row.get("paras") or [])
             bench[int(row.get("bench_size") or 0)] += 1
             labelled = sum(1 for p in row.get("paras", []) if p.get("label"))
-            strat["printed" if labelled else "blank-line"] += 1
+            strat["printed" if labelled else "sentence-window"] += 1
             years[int(row.get("year") or 0)] += 1
             for z, t in (row.get("zones") or {}).items():
                 if not t.strip():
