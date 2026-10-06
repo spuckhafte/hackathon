@@ -255,7 +255,7 @@ export const CitationGraph: React.FC = () => {
         style={{
           position: 'absolute',
           left: SIZES.margin,
-          top: 790,
+          top: 752,
           width: 580,
           opacity: penaltyIn,
           fontFamily: FONT_MONO,
