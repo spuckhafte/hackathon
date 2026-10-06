@@ -251,6 +251,13 @@ public private sector undertaking undertakings
 and of the for in by versus vs v
 """.split())
 
+# The hand list above is only the fallback.  The real gate is the *measured*
+# vocabulary in nyaya._lexicon: any token that is frequent in body text is an
+# ordinary word, whatever it is standing next to.
+from nyaya import _lexicon                                  # noqa: E402
+
+_ORDINARY_WORDS = PARTY_COMMON_WORDS | _lexicon.COMMON_WORDS
+
 #: Case-name tokens a user is likely to type *without* "v." — the deterministic
 #: half of the proper-noun exception (see docstring of `_mark_no_stem`).
 PROTECTED_NAMES = frozenset("""
@@ -297,7 +304,7 @@ def _never_stem(term: str) -> bool:
         return True
     if term in NO_STEM_TERMS:
         return True
-    if term in PROTECTED_NAMES:
+    if term in PROTECTED_NAMES or term in _lexicon.PARTY_NAME_WORDS:
         return True
     return False
 
@@ -341,7 +348,7 @@ def _mark_no_stem(terms: List[str], raws: List[str], kinds: List[str]) -> List[b
                     if side is right:
                         break               # the capitalised run has ended
                     continue                # scanning left: keep looking
-                if term in PARTY_COMMON_WORDS or term in STANDARD_STOPWORDS:
+                if term in _ORDINARY_WORDS or term in STANDARD_STOPWORDS:
                     continue
                 if term.isalpha() and len(term) > 3:
                     flags[j] = True
