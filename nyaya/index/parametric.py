@@ -345,6 +345,32 @@ def _norm_value(value: Any) -> str:
 # ==========================================================================
 
 
+#: M1 writes the statute enrichment to a sidecar as well as back into
+#: ``judgments.jsonl``, precisely so a locked 960 MB corpus cannot lose a build
+#: (his commit 431942b).  We prefer the sidecar: it is small, it is cheap to
+#: re-read, and it is correct even when the corpus rewrite could not complete.
+STATUTES_SIDECAR = config.PROCESSED / "statutes.jsonl"
+
+
+def _load_acts_sidecar(path: Path = None) -> Dict[int, List[str]]:
+    """``{doc_id: [act codes]}`` from the statutes sidecar, or ``{}``."""
+    p = Path(path or STATUTES_SIDECAR)
+    if not p.exists():
+        return {}
+    out: Dict[int, List[str]] = {}
+    with p.open("r", encoding="utf-8") as fh:
+        for line in fh:
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            acts = [str(a).strip().lower() for a in (row.get("acts") or [])
+                    if str(a).strip()]
+            if acts:
+                out[int(row["doc_id"])] = sorted(set(acts))
+    return out
+
+
 def _iter_records(path: Path = None, limit: Optional[int] = None) -> Iterator[Dict[str, Any]]:
     """Stream ``judgments.jsonl``, keeping only the parametric fields.
 
@@ -370,7 +396,8 @@ def _iter_records(path: Path = None, limit: Optional[int] = None) -> Iterator[Di
 
 def build(manifest: Optional[pd.DataFrame] = None,
           records: Optional[Iterable[Dict[str, Any]]] = None,
-          verbose: bool = True) -> ParametricIndex:
+          verbose: bool = True,
+          acts_sidecar: Optional[Dict[int, List[str]]] = None) -> ParametricIndex:
     """Build S2 from the manifest (metadata facts) + judgments.jsonl (PDF facts).
 
     Every field is taken through :func:`~nyaya.metadata.merge_from_record`, so
@@ -429,6 +456,15 @@ def build(manifest: Optional[pd.DataFrame] = None,
         if not types[i]:
             types[i] = str(row.get("case_type") or "").strip().lower()
 
+    # --- acts: the sidecar wins over whatever the corpus happens to carry ----
+    sidecar = _load_acts_sidecar() if acts_sidecar is None else acts_sidecar
+    acts_from_sidecar = 0
+    for did, acts in sidecar.items():
+        i = doc_index.get(int(did))
+        if i is not None:
+            act_sets[i] = acts
+            acts_from_sidecar += 1
+
     numeric = {"year": year, "bench": bench}
     numeric_order = {f: np.argsort(a, kind="stable").astype(np.int32)
                      for f, a in numeric.items()}
@@ -446,6 +482,7 @@ def build(manifest: Optional[pd.DataFrame] = None,
         "docs_without_any_record": n_docs - seen,
         "distinct_judges": len(dicts["judge"]),
         "distinct_acts": len(dicts["act"]),
+        "docs_with_acts_from_sidecar": acts_from_sidecar,
         "bench_from_pdf": int(seen - missing_bench),
     }
     idx = ParametricIndex(n_docs, numeric, numeric_order, dicts,

@@ -65,8 +65,10 @@ def _records(acts_for=None):
 
 @pytest.fixture
 def idx():
+    # acts_sidecar={} keeps the test hermetic: without it, build() reads the
+    # real data/processed/statutes.jsonl off disk.
     return build(_manifest(), _records({0: ["CONST"], 1: ["CONST"], 4: ["CONST", "IPC"]}),
-                 verbose=False)
+                 verbose=False, acts_sidecar={})
 
 
 # --------------------------------------------------------------------------
@@ -148,7 +150,7 @@ def test_act_field_is_populated_from_the_record(idx):
 
 def test_act_field_is_empty_but_present_when_m1_has_not_filled_it():
     """Must not explode before the statutes pass lands — just select nothing."""
-    bare = build(_manifest(), _records(), verbose=False)
+    bare = build(_manifest(), _records(), verbose=False, acts_sidecar={})
     assert bare.dicts["act"] == {}
     assert bare.select("act", "=", "ipc").tolist() == []
 
@@ -284,7 +286,7 @@ def test_noisy_judges_do_not_stop_the_clean_ones_being_indexed():
     man = _manifest()
     recs = _records()
     recs[0]["judges"] = ["PER CHANDRACHUD", "D.Y. CHANDRACHUD", "A.K. SIKRI"]
-    idx = build(man, recs, verbose=False)
+    idx = build(man, recs, verbose=False, acts_sidecar={})
     # doc 1 already has S.M. Sikri, so the surname key holds both
     assert idx.select("judge", "=", "sikri").tolist() == [0, 1]
     assert idx.select("judge", "=", "a.k. sikri").tolist() == [0]
@@ -295,8 +297,35 @@ def test_doc_without_a_record_keeps_its_metadata_facts():
     """53 scanned + 7 short + 2 + 2 documents have no record; they still have a year."""
     man = _manifest()
     recs = [r for r in _records() if r["doc_id"] != 2]
-    idx = build(man, recs, verbose=False)
+    idx = build(man, recs, verbose=False, acts_sidecar={})
     assert idx.header["docs_without_any_record"] == 1
     assert 2 in idx.select("year", "=", 1995).tolist()       # still filterable by year
     assert idx.column("bench")[2] == 1                       # metadata fallback, honest
     assert idx.select("judge", "=", "author").tolist() == [2]  # metadata judge fallback
+
+
+# --------------------------------------------------------------------------
+# acts come from M1's statutes sidecar, not from the 960 MB corpus
+# --------------------------------------------------------------------------
+def test_acts_are_taken_from_the_sidecar_when_the_corpus_lacks_them():
+    """M1 writes a small statutes.jsonl sidecar so a locked corpus cannot lose
+    the build (his 431942b).  S2 must prefer it."""
+    idx = build(_manifest(), _records(), verbose=False,
+                acts_sidecar={0: ["const", "ipc"], 3: ["crpc"]})
+    assert idx.select("act", "=", "const").tolist() == [0]
+    assert idx.select("act", "=", "ipc").tolist() == [0]
+    assert idx.select("act", "=", "crpc").tolist() == [3]
+    assert idx.header["docs_with_acts_from_sidecar"] == 2
+
+
+def test_sidecar_overrides_stale_acts_in_the_corpus():
+    idx = build(_manifest(), _records({0: ["STALE"]}), verbose=False,
+                acts_sidecar={0: ["const"]})
+    assert idx.select("act", "=", "stale").tolist() == []
+    assert idx.select("act", "=", "const").tolist() == [0]
+
+
+def test_sidecar_rows_outside_the_manifest_are_ignored():
+    idx = build(_manifest(), _records(), verbose=False,
+                acts_sidecar={0: ["const"], 99999: ["ipc"]})
+    assert idx.select("act", "=", "ipc").tolist() == []
