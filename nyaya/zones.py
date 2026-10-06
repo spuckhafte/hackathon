@@ -208,6 +208,10 @@ ORDER_MAX_PARAS = 3
 _NORM_UNION = re.compile(r"\bunion\s+of\s+india\b", re.I)
 _NORM_STATE = re.compile(r"\bstate\s+of\s+([A-Z][A-Za-z.\s]{2,30})", re.I)
 _WORD_RE = re.compile(r"[A-Za-z]+|[^\W\d_]+", re.UNICODE)
+#: Trailing "and others" boilerplate on a party name, applied repeatedly.
+_PARTY_NOISE_RE = re.compile(
+    r"\s*(?:etc\.?|&\s*(?:anr|ors)\.?|and\s+(?:another|others|anr\.?|ors\.?)"
+    r"|&\s*another|&\s*others)\s*[.,]*\s*$", re.I)
 
 
 # ==========================================================================
@@ -373,8 +377,14 @@ def normalise_party(name: str) -> str:
     """
     s = " ".join(name.split())
     s = s.strip(" .,:;-_'\"")
-    s = re.sub(r"\s*(?:etc\.?|&\s*(?:anr|ors)\.?|and\s+(?:another|others|anr\.?|ors\.?))\s*$",
-               "", s, flags=re.I)
+    # Strip the trailing "and others" boilerplate, repeatedly: the reports pile
+    # it up ("UNION OF INDIA & ORS. ETC. ETC."), and a party name only matches a
+    # citation's name (Member 2's Jaccard test) once that noise is gone.
+    while True:
+        stripped = _PARTY_NOISE_RE.sub("", s).strip(" .,:;-_")
+        if stripped == s or not stripped:
+            break
+        s = stripped
     s = _NORM_UNION.sub("Union of India", s)
 
     def _state(m: re.Match) -> str:
@@ -738,6 +748,50 @@ def segment(text: str, meta_title: str = "") -> Segmentation:
     )
 
 
+# --------------------------------------------------------------------------
+# Reading values out of a pandas manifest row.
+#
+# Worth three small functions rather than inline `or` expressions: the manifest
+# columns are a mix of pandas StringDtype (missing -> pd.NA, whose str() is
+# "<NA>"), numpy int16, and object columns holding numpy arrays.  `x or default`
+# raises "truth value of an array is ambiguous" on the array columns, and
+# str(pd.NA) silently puts the literal "<NA>" in a JudgmentRecord field.
+# --------------------------------------------------------------------------
+
+_MISSING_STRINGS = frozenset({"", "nan", "none", "<na>", "nat", "null"})
+
+
+def _meta_str(val: object) -> str:
+    if val is None:
+        return ""
+    try:
+        if val != val:                      # NaN / pd.NA
+            return ""
+    except (TypeError, ValueError):
+        return ""
+    s = str(val).strip()
+    return "" if s.lower() in _MISSING_STRINGS else s
+
+
+def _meta_list(val: object) -> List[str]:
+    if val is None:
+        return []
+    if isinstance(val, str):
+        return [val] if _meta_str(val) else []
+    try:
+        return [s for s in (_meta_str(v) for v in val) if s]
+    except TypeError:
+        return []
+
+
+def _meta_int(val: object) -> int:
+    s = _meta_str(val)
+    try:
+        return int(float(s))
+    except (TypeError, ValueError):
+        return 0
+
+
 def attach_statute_zone(record: JudgmentRecord, tokens: Iterable[str]) -> JudgmentRecord:
     """Hook for wave 2: fill the synthetic ``statutes`` zone.
 
@@ -767,23 +821,20 @@ def build_record(doc_id: int, source_path: str, year: int, text: str,
     found a judge line, because ``bench_size_meta`` is single-judge on 37k of
     42k rows.
     """
-    meta = meta or {}
+    meta = {} if meta is None else meta
     seg = segment(text, meta_title=meta_title)
     h = seg.header
 
     def pick(meta_key: str, mine: str) -> str:
-        val = meta.get(meta_key)
-        if val is None:
-            return mine
-        sval = str(val).strip()
-        return sval if sval and sval.lower() != "nan" else mine
+        """Member 2's value when it is really there, otherwise ours."""
+        return _meta_str(meta.get(meta_key)) or mine
 
-    judges_meta = list(meta.get("judges") or [])
+    judges_meta = _meta_list(meta.get("judges"))
     if h.judges:
         judges, bench_size, bench_src = h.judges, len(h.judges), h.bench_source
     else:
         judges = [str(j) for j in judges_meta]
-        bench_size = int(meta.get("bench_size_meta") or len(judges) or 0)
+        bench_size = _meta_int(meta.get("bench_size_meta")) or len(judges)
         bench_src = "metadata"
 
     rec = JudgmentRecord(
@@ -799,7 +850,7 @@ def build_record(doc_id: int, source_path: str, year: int, text: str,
         case_no=pick("case_no", h.case_no),
         neutral_cite=pick("neutral_cite", h.neutral_cite),
         scr_cite=pick("scr_cite", h.scr_cite),
-        disposal=str(meta.get("disposal") or ""),
+        disposal=_meta_str(meta.get("disposal")),
         case_type=pick("case_type", h.case_type),
         zones=seg.zones,
         paras=seg.paras,

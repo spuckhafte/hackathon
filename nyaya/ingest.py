@@ -478,6 +478,8 @@ def build(limit: int | None = None, processes: int | None = None,
 
     tally: Counter[str] = Counter()
     strategies: Counter[str] = Counter()
+    bench_sources: Counter[str] = Counter()
+    order_how: Counter[str] = Counter()
     bench_sizes: Counter[int] = Counter()
     n_words = n_paras = 0
     written = 0
@@ -490,16 +492,18 @@ def build(limit: int | None = None, processes: int | None = None,
             if ex.status != "ok":
                 continue
             meta = meta_by_id.get(ex.doc_id, {})
-            rec = zmod.build_record(
+            rec, info = zmod.build_record(
                 doc_id=ex.doc_id,
                 source_path=ex.path,
                 year=ex.year,
                 text=ex.text,
                 meta_title=str(meta.get("title") or ""),
                 n_pages=ex.n_pages,
+                meta=meta,
             )
-            seg = zmod.last_segmentation(rec)
-            strategies[seg] += 1
+            strategies[str(info["para_strategy"])] += 1
+            bench_sources[str(info["bench_source"])] += 1
+            order_how[str(info["order_strategy"])] += 1
             bench_sizes[rec.bench_size] += 1
             n_words += ex.n_words
             n_paras += len(rec.paras)
@@ -514,6 +518,8 @@ def build(limit: int | None = None, processes: int | None = None,
         "mean_words": round(n_words / written, 1) if written else 0.0,
         "mean_paras": round(n_paras / written, 1) if written else 0.0,
         "para_strategy": dict(strategies),
+        "order_strategy": dict(order_how),
+        "bench_source": dict(bench_sources),
         "bench_sizes": dict(sorted(bench_sizes.items())),
         "out": str(out),
     }
