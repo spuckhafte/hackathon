@@ -67,10 +67,28 @@ from nyaya.contracts import Authority, CitationEdge
 from nyaya.metadata import load_manifest, load_universe
 from nyaya.utils import ensure_utf8_stdout, timed
 
+#: The shipped store that ``AuthorityStore`` (M3) loads by default.  Plain
+#: PageRank, i.e. system S3.
 AUTHORITY_JSON = config.INDEX / "authority.json"
+#: The treatment-weighted store, i.e. system S4.  Written to its own file so
+#: **both systems are live at once** and the S3 -> S4 ablation is a flag rather
+#: than a rebuild.
+AUTHORITY_TREATMENT_JSON = config.INDEX / "authority_treatment.json"
 PAGERANK_STATS = config.INDEX / "pagerank_stats.json"
+PAGERANK_TREATMENT_STATS = config.INDEX / "pagerank_treatment_stats.json"
 
 WEIGHTINGS = ("uniform", "treatment")
+
+
+def authority_path(weighting: str = "uniform") -> Path:
+    """Where the store for ``weighting`` lives."""
+    return (AUTHORITY_TREATMENT_JSON if weighting == "treatment"
+            else AUTHORITY_JSON)
+
+
+def stats_path(weighting: str = "uniform") -> Path:
+    return (PAGERANK_TREATMENT_STATS if weighting == "treatment"
+            else PAGERANK_STATS)
 
 #: Universe-only nodes have no PDF, hence no CORAM line, hence no real bench
 #: size.  Using `bench_size_meta` would hand 87% of them a bench of 1 and
@@ -314,11 +332,27 @@ def treatment_status(graph: CitationGraph) -> Dict[int, Tuple[str, float, List[i
 
 def build_authority(graph: CitationGraph,
                    pr: np.ndarray,
-                   bench: np.ndarray) -> Dict[int, Authority]:
+                   bench: np.ndarray,
+                   use_treatment: bool = False) -> Dict[int, Authority]:
+    """Assemble the :class:`~nyaya.contracts.Authority` record for every node.
+
+    ``use_treatment`` is what separates the two systems, and it has to gate the
+    *penalty* as well as the edge weights:
+
+    * **S3** is plain PageRank.  It knows nothing about how a precedent was
+      treated, so every judgment is ``status="ok"`` with ``penalty=1.0`` even
+      though the edges happen to carry labels.  Applying the penalty here would
+      make S3 treatment-aware and the S3 -> S4 ablation would under-report the
+      difference — the two stores would differ only in edge weights, and the
+      headline "overruled judgments drop out of the ranking" effect would already
+      be present in the baseline.
+    * **S4** reads ``config.TREATMENT_PENALTY`` through
+      :func:`treatment_status`.
+    """
     pr_norm = log_minmax(pr)
     b_norm = bench_norm(bench)
     g = (config.G_PAGERANK_WEIGHT * pr_norm + config.G_BENCH_WEIGHT * b_norm)
-    status = treatment_status(graph)
+    status = treatment_status(graph) if use_treatment else {}
     indeg, outdeg = graph.in_degree(), graph.out_degree()
 
     out: Dict[int, Authority] = {}
@@ -406,7 +440,8 @@ def build(weighting: str = "uniform",
         pr, info = pagerank(graph, verbose=verbose)
 
     bench, provenance = bench_vector(uni, man)
-    authority = build_authority(graph, pr, bench)
+    authority = build_authority(graph, pr, bench,
+                                use_treatment=(weighting == "treatment"))
 
     stats: Dict[str, Any] = {
         "weighting": weighting,
@@ -508,16 +543,25 @@ def _rank_agreement(a: np.ndarray, b: np.ndarray, k: int) -> float:
     return round(len(ta & tb) / k, 4)
 
 
-def write_authority(authority: Dict[int, Authority], stats: Dict[str, Any]) -> Path:
+def write_authority(authority: Dict[int, Authority], stats: Dict[str, Any],
+                    out: Optional[Path] = None) -> Path:
+    """Persist one authority store.
+
+    Uniform and treatment weightings go to *different* files, so running the S4
+    build never destroys the S3 one and ``search(mode=...)`` can switch between
+    them without a rebuild.
+    """
     config.INDEX.mkdir(parents=True, exist_ok=True)
+    weighting = stats.get("weighting", "uniform")
+    target = Path(out) if out else authority_path(weighting)
     blob = {
         "header": {k: v for k, v in stats.items()
                    if k not in ("top", "in_degree_histogram", "recency_bias")},
         "nodes": {str(n): asdict(a) for n, a in authority.items()},
     }
-    AUTHORITY_JSON.write_text(json.dumps(blob), encoding="utf-8")
-    PAGERANK_STATS.write_text(json.dumps(stats, indent=2), encoding="utf-8")
-    return AUTHORITY_JSON
+    target.write_text(json.dumps(blob), encoding="utf-8")
+    stats_path(weighting).write_text(json.dumps(stats, indent=2), encoding="utf-8")
+    return target
 
 
 def load_authority(path: Path = None) -> Dict[int, Authority]:
@@ -528,6 +572,95 @@ def load_authority(path: Path = None) -> Dict[int, Authority]:
         )
     blob = json.loads(p.read_text(encoding="utf-8"))
     return {int(k): Authority(**v) for k, v in blob["nodes"].items()}
+
+
+def compare_weightings(uniform: Optional[Path] = None,
+                       treatment: Optional[Path] = None,
+                       universe=None,
+                       top: int = 15) -> Dict[str, Any]:
+    """Diff the S3 and S4 stores: which judgments lose authority, and by how much.
+
+    This is the novelty claim in two numbers.  Plain PageRank (S3) rewards a
+    judgment for *being cited*, with no regard for what the citing court said
+    about it — so a much-cited judgment that has since been overruled keeps its
+    high authority and keeps being recommended as live law.  Treatment-weighted
+    PageRank (S4) gives an overruling citation weight 0.0
+    (``config.TREATMENT_WEIGHTS``) and multiplies the overruled judgment's g(d)
+    by ``config.TREATMENT_PENALTY['overruled']``, so it drops.
+
+    Returns the judgments whose status is not ``ok`` under S4, ordered by how
+    much g(d) fell, with their titles.
+    """
+    s3 = load_authority(uniform or AUTHORITY_JSON)
+    s4_path = Path(treatment or AUTHORITY_TREATMENT_JSON)
+    if not s4_path.exists():
+        raise FileNotFoundError(
+            f"{s4_path} missing — run "
+            "`python -m nyaya.authority.pagerank build --weighting treatment` "
+            "after M1's treatment classifier has labelled index/citations.jsonl")
+    s4 = load_authority(s4_path)
+
+    if universe is None:
+        universe = load_universe()
+    title = dict(zip(universe["node_id"], universe["title"]))
+    year = dict(zip(universe["node_id"], universe["year"]))
+
+    changed: List[Dict[str, Any]] = []
+    status_counts: Counter = Counter()
+    for node, a4 in s4.items():
+        status_counts[a4.status] += 1
+        a3 = s3.get(node)
+        if a3 is None:
+            continue
+        if a4.status == "ok" and abs(a4.g - a3.g) < 1e-12:
+            continue
+        changed.append({
+            "node_id": node,
+            "year": int(year.get(node, 0)),
+            "title": str(title.get(node, "")),
+            "status": a4.status,
+            "g_s3": round(a3.g, 4),
+            "g_s4": round(a4.g, 4),
+            "delta": round(a4.g - a3.g, 4),
+            "penalty": a4.penalty,
+            "in_degree": a4.in_degree,
+            "pagerank_s3": a3.pagerank,
+            "pagerank_s4": a4.pagerank,
+        })
+    changed.sort(key=lambda r: r["delta"])
+    return {
+        "nodes": len(s4),
+        "status_counts": dict(status_counts),
+        "changed": len(changed),
+        "biggest_drops": changed[:top],
+        "mean_drop": (sum(r["delta"] for r in changed) / len(changed)
+                      if changed else 0.0),
+    }
+
+
+def print_comparison(c: Dict[str, Any]) -> None:
+    p = print
+    p("=" * 78)
+    p("S3 (plain PageRank) vs S4 (treatment-weighted) — the g(d) that changed")
+    p("=" * 78)
+    p(f"nodes                  : {c['nodes']:,}")
+    p(f"status under S4        : {c['status_counts']}")
+    p(f"judgments whose g moved: {c['changed']:,}  "
+      f"(mean change {c['mean_drop']:+.4f})")
+    if not c["biggest_drops"]:
+        p("")
+        p("  nothing moved — every citation is still unlabelled, so S4 and S3")
+        p("  are the same graph.  This is expected until M1's classifier runs.")
+        p("=" * 78)
+        return
+    p("")
+    p(f"  {'year':>4}  {'in':>4}  {'status':<14}{'g S3':>7}{'g S4':>7}"
+      f"{'delta':>8}  title")
+    for r in c["biggest_drops"]:
+        p(f"  {r['year']:>4}  {r['in_degree']:>4}  {r['status']:<14}"
+          f"{r['g_s3']:>7.3f}{r['g_s4']:>7.3f}{r['delta']:>+8.3f}  "
+          f"{r['title'][:40]}")
+    p("=" * 78)
 
 
 # ==========================================================================
@@ -595,7 +728,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     t = sub.add_parser("top")
     t.add_argument("--n", type=int, default=20)
     sub.add_parser("validate")
-    sub.add_parser("stats")
+    st = sub.add_parser("stats")
+    st.add_argument("--weighting", choices=list(WEIGHTINGS), default="uniform")
+    cp = sub.add_parser("compare",
+                        help="diff the S3 and S4 stores (the g(d) deltas)")
+    cp.add_argument("--top", type=int, default=15)
     args = ap.parse_args(argv)
 
     if args.command == "build":
@@ -605,10 +742,13 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         out = write_authority(authority, stats)
         print(f"wrote {len(authority):,} authority records -> {out}")
         print_stats(stats)
+    elif args.command == "compare":
+        print_comparison(compare_weightings(top=args.top))
     elif args.command in ("stats", "top"):
-        if not PAGERANK_STATS.exists():
-            raise SystemExit("no pagerank_stats.json — run `build` first")
-        s = json.loads(PAGERANK_STATS.read_text(encoding="utf-8"))
+        sp = stats_path(getattr(args, "weighting", "uniform"))
+        if not sp.exists():
+            raise SystemExit(f"no {sp.name} — run `build` first")
+        s = json.loads(sp.read_text(encoding="utf-8"))
         if args.command == "stats":
             print_stats(s)
         else:

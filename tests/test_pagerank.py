@@ -310,10 +310,25 @@ def test_one_distinguishing_edge_is_not_enough():
 def test_overruled_status_drives_the_penalty_into_g():
     g = _graph([(0, 1, "overruled"), (2, 3, "followed")], 5, weighting="treatment")
     pr, _ = pagerank(g)
-    auth = build_authority(g, pr, np.full(5, 5.0))
+    auth = build_authority(g, pr, np.full(5, 5.0), use_treatment=True)
     assert auth[1].status == "overruled"
     assert auth[1].penalty < auth[3].penalty
     assert auth[1].g < auth[3].g
+
+
+def test_s3_is_plain_pagerank_even_when_the_edges_carry_labels():
+    """S3 must know nothing about treatment, or the ablation under-reports.
+
+    The edges here are labelled, but `use_treatment=False` is the S3 build: every
+    judgment stays `ok` with penalty 1.0.  If the penalty leaked into S3, the two
+    stores would differ only in edge weights and the headline "overruled
+    judgments lose authority" effect would already be in the baseline.
+    """
+    g = _graph([(0, 1, "overruled"), (2, 3, "followed")], 5, weighting="uniform")
+    pr, _ = pagerank(g)
+    auth = build_authority(g, pr, np.full(5, 5.0), use_treatment=False)
+    assert auth[1].status == "ok"
+    assert auth[1].penalty == 1.0
 
 
 # --------------------------------------------------------------------------
@@ -323,3 +338,124 @@ def test_bench_prior_is_a_plausible_supreme_court_bench():
     """It must not be 1: the Court never sits alone, which is the whole reason
     bench_size_meta is unusable."""
     assert BENCH_PRIOR_FALLBACK >= 2
+
+
+# --------------------------------------------------------------------------
+# S3 and S4 are separate stores, and the g(d) delta is the novelty claim
+# --------------------------------------------------------------------------
+def test_the_two_weightings_write_to_different_files():
+    """Building S4 must not destroy S3: the ablation is a flag, not a rebuild."""
+    from nyaya.authority.pagerank import (
+        AUTHORITY_JSON,
+        AUTHORITY_TREATMENT_JSON,
+        authority_path,
+        stats_path,
+    )
+
+    assert authority_path("uniform") == AUTHORITY_JSON
+    assert authority_path("treatment") == AUTHORITY_TREATMENT_JSON
+    assert authority_path("uniform") != authority_path("treatment")
+    assert stats_path("uniform") != stats_path("treatment")
+
+
+def _write_store(tmp_path, name, graph, weighting, bench):
+    from nyaya.authority.pagerank import build_authority, pagerank, write_authority
+
+    pr, _info = pagerank(graph)
+    auth = build_authority(graph, pr, bench,
+                           use_treatment=(weighting == "treatment"))
+    stats = {"weighting": weighting}
+    return write_authority(auth, stats, out=tmp_path / name), auth
+
+
+def test_an_overruled_judgment_loses_g_between_s3_and_s4(tmp_path, monkeypatch):
+    """The claim: a much-cited judgment that has been overruled must drop.
+
+    Node 1 is cited four times; one of those citations overrules it.  Under
+    uniform weighting (S3) it keeps a high g(d).  Under treatment weighting (S4)
+    the overruling edge carries weight 0.0 and the penalty multiplies g(d) down.
+    """
+    import pandas as pd
+
+    import nyaya.authority.pagerank as P
+
+    pairs = [(0, 1, "followed"), (2, 1, "followed"), (3, 1, "followed"),
+             (4, 1, "overruled")]
+    bench = np.full(6, 5.0)
+    g_uniform = _graph(pairs, 6, weighting="uniform")
+    g_treat = _graph(pairs, 6, weighting="treatment")
+
+    p3, _a3 = _write_store(tmp_path, "s3.json", g_uniform, "uniform", bench)
+    p4, _a4 = _write_store(tmp_path, "s4.json", g_treat, "treatment", bench)
+
+    universe = pd.DataFrame({
+        "node_id": list(range(6)),
+        "title": [f"CASE {i}" for i in range(6)],
+        "year": [1960 + i for i in range(6)],
+    })
+    cmp = P.compare_weightings(uniform=p3, treatment=p4, universe=universe)
+
+    assert cmp["status_counts"].get("overruled") == 1
+    assert cmp["changed"] >= 1
+    worst = cmp["biggest_drops"][0]
+    assert worst["node_id"] == 1
+    assert worst["status"] == "overruled"
+    assert worst["delta"] < 0                       # g(d) fell
+    assert worst["g_s4"] < worst["g_s3"]
+    assert worst["penalty"] == config.TREATMENT_PENALTY["overruled"]
+
+
+def test_an_unlabelled_graph_shows_no_movement(tmp_path):
+    """Honest default: with every edge unlabelled, S4 == S3 and compare says so."""
+    import pandas as pd
+
+    import nyaya.authority.pagerank as P
+
+    pairs = [(0, 1), (2, 1)]
+    bench = np.full(4, 3.0)
+    p3, _ = _write_store(tmp_path, "s3.json", _graph(pairs, 4, "uniform"),
+                         "uniform", bench)
+    p4, _ = _write_store(tmp_path, "s4.json", _graph(pairs, 4, "treatment"),
+                         "treatment", bench)
+    universe = pd.DataFrame({"node_id": list(range(4)),
+                             "title": ["a", "b", "c", "d"],
+                             "year": [1950] * 4})
+    cmp = P.compare_weightings(uniform=p3, treatment=p4, universe=universe)
+    assert cmp["changed"] == 0
+    assert cmp["biggest_drops"] == []
+
+
+def test_compare_requires_the_treatment_store_to_exist(tmp_path):
+    import pandas as pd
+
+    import nyaya.authority.pagerank as P
+
+    bench = np.full(3, 2.0)
+    p3, _ = _write_store(tmp_path, "s3.json", _graph([(0, 1)], 3, "uniform"),
+                         "uniform", bench)
+    with pytest.raises(FileNotFoundError):
+        P.compare_weightings(uniform=p3, treatment=tmp_path / "nope.json",
+                             universe=pd.DataFrame({"node_id": [0, 1, 2],
+                                                    "title": ["a", "b", "c"],
+                                                    "year": [1950] * 3}))
+
+
+def test_a_frequently_distinguished_judgment_also_drops(tmp_path):
+    import pandas as pd
+
+    import nyaya.authority.pagerank as P
+
+    pairs = [(0, 1, "distinguished"), (2, 1, "distinguished"),
+             (3, 1, "followed")]
+    bench = np.full(5, 4.0)
+    p3, _ = _write_store(tmp_path, "s3.json", _graph(pairs, 5, "uniform"),
+                         "uniform", bench)
+    p4, _ = _write_store(tmp_path, "s4.json", _graph(pairs, 5, "treatment"),
+                         "treatment", bench)
+    universe = pd.DataFrame({"node_id": list(range(5)),
+                             "title": [f"c{i}" for i in range(5)],
+                             "year": [1970] * 5})
+    cmp = P.compare_weightings(uniform=p3, treatment=p4, universe=universe)
+    worst = cmp["biggest_drops"][0]
+    assert worst["status"] == "distinguished"
+    assert worst["delta"] < 0
