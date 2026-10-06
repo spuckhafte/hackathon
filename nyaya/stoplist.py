@@ -338,13 +338,35 @@ def _iter_corpus_texts(limit: int = 0, source: str = "auto") -> Iterable[Tuple[s
 _PARTY_WORD_RE = re.compile(r"[A-Za-z][A-Za-z']{3,}")
 
 
-def _party_tokens() -> set:
-    """Every token appearing in a petitioner/respondent metadata field."""
-    import pandas as pd
+def _party_tokens() -> Tuple[set, str]:
+    """Every token appearing in a party name, with the source it came from.
 
+    Prefers the built corpus's ``parties`` zone (the real thing M1's zoner
+    produced, which is what the index actually holds) and falls back to the
+    petitioner/respondent columns of the raw metadata when the corpus is not
+    built yet.
+    """
     from nyaya import config
 
     out: set = set()
+    if config.JUDGMENTS_JSONL.exists():
+        from nyaya.utils import read_jsonl
+
+        n = 0
+        for rec in read_jsonl(config.JUDGMENTS_JSONL):
+            zone = (rec.get("zones") or {}).get("parties") or ""
+            blob = " ".join(
+                [str(zone), str(rec.get("petitioner") or ""),
+                 str(rec.get("respondent") or "")]
+            )
+            for w in _PARTY_WORD_RE.findall(blob):
+                out.add(w.lower().strip("'"))
+            n += 1
+        if out:
+            return out, f"parties zone of {n} built judgments"
+
+    import pandas as pd
+
     for f in sorted(config.RAW_METADATA.glob("*.parquet")):
         try:
             d = pd.read_parquet(f, columns=["petitioner", "respondent"])
@@ -354,7 +376,7 @@ def _party_tokens() -> set:
             for v in d[col].dropna().astype(str):
                 for w in _PARTY_WORD_RE.findall(v):
                     out.add(w.lower().strip("'"))
-    return out
+    return out, "petitioner/respondent columns of the raw metadata"
 
 
 def derive(limit: int = 0, source: str = "auto") -> Dict[str, object]:
@@ -413,7 +435,7 @@ def _write_lexicon(df_raw: Counter, n: int, source: str) -> str:
 
     common = sorted(t for t, c in df_raw.items()
                     if t.isalpha() and c / n >= COMMON_WORD_DF)
-    party = _party_tokens()
+    party, party_src = _party_tokens()
     names = sorted(
         t for t in party
         if t.isalpha() and len(t) >= 4
@@ -434,14 +456,16 @@ def _write_lexicon(df_raw: Counter, n: int, source: str) -> str:
         _wrap(common),
         "))",
         "",
-        f"#: {len(names)} party-field tokens with body df/N < {PARTY_NAME_MAX_DF}.",
+        f"#: {len(names)} party-name tokens with body df/N < {PARTY_NAME_MAX_DF},",
+        f"#: drawn from the {party_src}.",
         "PARTY_NAME_WORDS: FrozenSet[str] = frozenset((",
         _wrap(names),
         "))",
         "",
     ]
     path.write_text("\n".join(body), encoding="utf-8")
-    return f"{len(common)} common words, {len(names)} party-name tokens"
+    return (f"{len(common)} common words, {len(names)} party-name tokens "
+            f"(from the {party_src})")
 
 
 def _main(argv: List[str] | None = None) -> int:
