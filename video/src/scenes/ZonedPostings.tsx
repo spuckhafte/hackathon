@@ -26,7 +26,7 @@ const POSITIONS = ['3, 41, 88', '210', '7, 9, 64', '1902', '77, 310', '15', '2, 
 
 const LEFT = 230;
 const CELL_W = 118;
-const TOP = 420;
+const TOP = 486;
 
 export const ZonedPostings: React.FC = () => {
   const frame = useCurrentFrame();
@@ -43,7 +43,7 @@ export const ZonedPostings: React.FC = () => {
         style={{
           position: 'absolute',
           left: SIZES.margin,
-          top: 262,
+          top: 254,
           display: 'flex',
           alignItems: 'center',
           gap: 22,
@@ -99,7 +99,7 @@ export const ZonedPostings: React.FC = () => {
         })}
         <text
           x={LEFT}
-          y={TOP - 108}
+          y={TOP - 122}
           fontFamily={FONT_MONO}
           fontSize={21}
           letterSpacing={2.5}
@@ -183,39 +183,35 @@ export const ZonedPostings: React.FC = () => {
         );
       })}
 
-      {/* legends */}
+      {/* legend */}
       <div
         style={{
           position: 'absolute',
-          left: SIZES.margin - 76,
-          top: TOP + 72,
-          width: 290,
-          textAlign: 'right',
+          left: SIZES.margin,
+          top: TOP + 238,
+          display: 'flex',
+          alignItems: 'center',
+          gap: 34,
           fontFamily: FONT_MONO,
-          fontSize: 20,
+          fontSize: 21,
           color: COLORS.inkDim,
           opacity: zonesIn,
-          lineHeight: 1.5,
         }}
       >
-        <div style={{color: COLORS.accent}}>statutes tf</div>
-        <div style={{color: COLORS.cool}}>order tf</div>
-        <div style={{color: COLORS.coolSoft}}>body tf</div>
-      </div>
-      <div
-        style={{
-          position: 'absolute',
-          left: SIZES.margin - 76,
-          top: TOP + 168,
-          width: 290,
-          textAlign: 'right',
-          fontFamily: FONT_MONO,
-          fontSize: 20,
-          color: COLORS.inkFaint,
-          opacity: posIn,
-        }}
-      >
-        positions
+        <span style={{color: COLORS.inkFaint, letterSpacing: 2.5}}>PER POSTING</span>
+        {[
+          ['statutes tf', COLORS.accent],
+          ['order tf', COLORS.cool],
+          ['body tf', COLORS.coolSoft],
+        ].map(([label, color]) => (
+          <span key={label} style={{display: 'flex', alignItems: 'center', gap: 9}}>
+            <span style={{width: 15, height: 15, borderRadius: 3, background: color}} />
+            {label}
+          </span>
+        ))}
+        <span style={{color: COLORS.inkFaint, opacity: posIn}}>
+          &#8212; and the position list underneath each one
+        </span>
       </div>
 
       <Caption delay={430}>
