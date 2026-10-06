@@ -755,6 +755,110 @@ def load_edges(path: Path = None, resolved_only: bool = True) -> List[CitationEd
 # ==========================================================================
 
 
+def audit_name_rung(limit: Optional[int] = None, every: int = 7) -> Dict[str, Any]:
+    """Measure the precision of the fuzzy name rung against SCR ground truth.
+
+    The name rung is the one that can be *wrong* — the exact-key rungs cannot,
+    because SCR keys are unique over the universe.  So we need its precision, and
+    we can get it without hand-labelling anything:
+
+    take only the citations that carry an **exact SCR key** (ground truth, 0 key
+    collisions in 37,210 nodes), hide that key, ask the name rung
+    independently, and compare.  Nothing circular: the label and the prediction
+    come from different evidence in the same citation.
+
+    Caveat that makes this a *lower* bound: ``name_near`` picks the nearest
+    preceding "X v. Y", which in a string of citations is sometimes the name of
+    the neighbouring precedent, so some counted "errors" are the rung correctly
+    resolving a name that belongs to a different citation in the window.
+    """
+    resolver = CitationResolver()
+    tally: Counter = Counter()
+    examples: List[Dict[str, str]] = []
+
+    for i, rec in enumerate(_iter_judgments(limit=limit)):
+        if every > 1 and i % every:
+            continue
+        for para in rec.get("paras", ()):
+            if para.get("zone") not in SCAN_ZONES:
+                continue
+            text = para.get("text") or ""
+            matches = find_citations(text)
+            if not matches:
+                continue
+            for group in merge_parallel_citations(matches, text):
+                truth = -1
+                for m in group:
+                    if m.scr_key and m.scr_key in resolver.by_scr:
+                        truth = resolver.by_scr[m.scr_key]
+                        break
+                if truth < 0:
+                    continue
+                name = name_near(text, group[0].start, group[-1].end)
+                toks = set(name_match_tokens(name))
+                if len(toks) < MIN_NAME_TOKENS:
+                    tally["ground_truth_without_a_usable_name"] += 1
+                    continue
+                cands = resolver._name_candidates(toks, {m.year for m in group})
+                guess, why = resolver._best_by_name(cands, toks)
+                if guess < 0:
+                    tally[f"declined_{why}"] += 1
+                elif guess == truth:
+                    tally[f"correct_{why}"] += 1
+                else:
+                    tally[f"wrong_{why}"] += 1
+                    if len(examples) < 10:
+                        examples.append({
+                            "name": name,
+                            "truth": resolver.node_title.get(truth, ""),
+                            "guess": resolver.node_title.get(guess, ""),
+                        })
+
+    correct = sum(v for k, v in tally.items() if k.startswith("correct_"))
+    wrong = sum(v for k, v in tally.items() if k.startswith("wrong_"))
+    out: Dict[str, Any] = {
+        "sampled_every": every,
+        "counts": dict(tally),
+        "fired": correct + wrong,
+        "correct": correct,
+        "wrong": wrong,
+        "precision": correct / (correct + wrong) if correct + wrong else 0.0,
+        "declined": sum(v for k, v in tally.items() if k.startswith("declined_")),
+        "by_rule": {},
+        "disagreements": examples,
+    }
+    for rule in ("jaccard", "subset"):
+        c, w = tally.get(f"correct_{rule}", 0), tally.get(f"wrong_{rule}", 0)
+        out["by_rule"][rule] = {"correct": c, "wrong": w,
+                                "precision": c / (c + w) if c + w else 0.0}
+    return out
+
+
+def print_audit(a: Dict[str, Any]) -> None:
+    p = print
+    p("=" * 68)
+    p("name-rung precision vs exact-SCR ground truth "
+      f"(1-in-{a['sampled_every']} sample)")
+    p("=" * 68)
+    p(f"rung fired on          : {a['fired']:,} ground-truth citations")
+    p(f"  correct              : {a['correct']:,}")
+    p(f"  wrong                : {a['wrong']:,}")
+    p(f"  PRECISION            : {a['precision']:.1%}   (a LOWER bound - see docstring)")
+    p(f"rung declined          : {a['declined']:,} (it refuses rather than guess)")
+    p(f"no usable name at all  : {a['counts'].get('ground_truth_without_a_usable_name', 0):,}")
+    p("")
+    for rule, v in a["by_rule"].items():
+        p(f"  rule {rule:<8} {v['correct']:>5,}/{v['correct'] + v['wrong']:<5,} "
+          f"= {v['precision']:.1%}")
+    p("")
+    p("sample disagreements (cited name | ground truth | our guess):")
+    for e in a["disagreements"][:6]:
+        p(f"  {e['name'][:38]!r}")
+        p(f"      truth: {e['truth'][:58]}")
+        p(f"      guess: {e['guess'][:58]}")
+    p("=" * 68)
+
+
 def print_stats(s: Dict[str, Any]) -> None:
     p = print
     p("=" * 68)
@@ -800,6 +904,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     b.add_argument("--limit", type=int, default=None,
                    help="only the first N judgments (for a quick check)")
     sub.add_parser("stats")
+    au = sub.add_parser("audit",
+                        help="precision of the fuzzy name rung vs SCR ground truth")
+    au.add_argument("--every", type=int, default=7,
+                    help="sample one judgment in N (default 7)")
+    au.add_argument("--limit", type=int, default=None)
     pr = sub.add_parser("probe", help="show what the extractor sees in a string")
     pr.add_argument("text")
     args = ap.parse_args(argv)
@@ -814,6 +923,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         if not CITATIONS_STATS.exists():
             raise SystemExit("no citations_stats.json — run `build` first")
         print_stats(json.loads(CITATIONS_STATS.read_text(encoding="utf-8")))
+    elif args.command == "audit":
+        with timed("name-rung audit"):
+            a = audit_name_rung(limit=args.limit, every=args.every)
+        (config.INDEX / "citations_name_audit.json").write_text(
+            json.dumps(a, indent=2, ensure_ascii=False), encoding="utf-8")
+        print_audit(a)
     else:
         resolver = CitationResolver()
         matches = find_citations(args.text)
