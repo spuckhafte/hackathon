@@ -118,6 +118,11 @@ DICTIONARY_FILE = "dictionary.json"
 DOCMETA_FILE = "docmeta.npz"
 BLOCK_DIR = "_spimi_blocks"
 
+#: Statute facts per document, written by ``enrich``.  Member 2's parametric
+#: index can join this on ``doc_id`` without waiting for judgments.jsonl to be
+#: rewritten - see enrich_corpus() for why that matters on Windows.
+STATUTES_SIDECAR = config.PROCESSED / "statutes.jsonl"
+
 
 # ==========================================================================
 # 1. Build profiles - the ablation is a flag, not a code change
@@ -719,18 +724,36 @@ def build(profile: Optional[IndexProfile] = None,
     meta["merge_seconds"] = round(merge_s, 1)
     meta["total_seconds"] = round(time.perf_counter() - t_all, 1)
 
-    if persist_statutes and profile.name == "full" and not limit:
-        meta["statutes_written"] = _persist_statutes(block_ids, block_dir, src)
+    # Record the timings *before* the optional corpus write-back.  The write-back
+    # touches a file two other members also read, so it is the one step that can
+    # fail for reasons having nothing to do with the index; it must never cost us
+    # the 10-minute build's own metadata.
+    _update_dictionary_meta(out_dir, meta)
 
-    # the dictionary already landed; rewrite it with the timings included
-    dpath = out_dir / DICTIONARY_FILE
-    d = json.loads(dpath.read_text(encoding="utf-8"))
-    d["meta"].update({k: v for k, v in meta.items() if k != "profile"})
-    dpath.write_text(json.dumps(d), encoding="utf-8")
+    if persist_statutes and profile.name == "full" and not limit:
+        try:
+            meta["statutes_written"] = _persist_statutes(block_ids, block_dir, src)
+        except OSError as exc:
+            # On Windows os.replace fails while a teammate has the corpus open.
+            # The index itself already holds the statute tokens; the write-back is
+            # a convenience for Member 2 and can be redone with
+            #     python -m nyaya.index.positional enrich
+            meta["statutes_written"] = f"deferred ({type(exc).__name__})"
+            print(f"statute write-back deferred: {exc}\n"
+                  f"  run: python -m nyaya.index.positional enrich",
+                  file=sys.stderr)
+        _update_dictionary_meta(out_dir, meta)
 
     if not keep_blocks:
         shutil.rmtree(block_dir, ignore_errors=True)
     return meta
+
+
+def _update_dictionary_meta(out_dir: Path, meta: Dict[str, Any]) -> None:
+    dpath = out_dir / DICTIONARY_FILE
+    d = json.loads(dpath.read_text(encoding="utf-8"))
+    d["meta"].update({k: v for k, v in meta.items() if k != "profile"})
+    dpath.write_text(json.dumps(d), encoding="utf-8")
 
 
 def _merge_docmeta(block_ids: Sequence[int], block_dir: Path,
@@ -830,8 +853,148 @@ def _persist_statutes(block_ids: Sequence[int], block_dir: Path,
                 n += 1 if toks else 0
             fout.write(json.dumps(row, ensure_ascii=False))
             fout.write("\n")
-    os.replace(tmp, src)
+    _replace_with_retry(tmp, src)
     return n
+
+
+def _replace_with_retry(tmp: Path, dest: Path, attempts: int = 10,
+                        delay: float = 1.0) -> None:
+    """``os.replace`` with retries: on Windows it fails while a reader holds it."""
+    last: Optional[OSError] = None
+    for i in range(attempts):
+        try:
+            os.replace(tmp, dest)
+            return
+        except OSError as exc:
+            last = exc
+            time.sleep(delay * (i + 1))
+    tmp.unlink(missing_ok=True)
+    raise last if last else OSError("replace failed")
+
+
+def _statutes_of_slice(job):
+    """Worker: statute tokens for one byte-range of judgments.jsonl."""
+    from nyaya import statutes as stat_mod
+
+    src, byte_start, n_lines = job
+    out = []
+    with open(src, "r", encoding="utf-8") as fh:
+        fh.seek(byte_start)
+        for _ in range(n_lines):
+            line = fh.readline()
+            if not line:
+                break
+            line = line.strip()
+            if not line:
+                continue
+            row = json.loads(line)
+            body = "\n".join(p.get("text", "") for p in (row.get("paras") or []))
+            out.append((int(row["doc_id"]), stat_mod.extract_statutes(body)))
+    return out
+
+
+def enrich_corpus(src: Optional[Path] = None,
+                  processes: Optional[int] = None,
+                  verbose: bool = True) -> Dict[str, Any]:
+    """Fill the ``statutes`` zone of ``judgments.jsonl`` in place.
+
+    The same work the index builder does, but standalone, so the corpus can be
+    enriched for Member 2's ``act:`` filter without a 10-minute rebuild - and so
+    a Windows file lock on the shared corpus is a one-command retry instead of a
+    lost build.
+    """
+    from nyaya import zones as zone_mod
+    from nyaya.contracts import JudgmentRecord
+
+    src = Path(src or config.JUDGMENTS_JSONL)
+    processes = processes or INDEX_PROCESSES
+    offs = _line_offsets(src)
+    step = config.SPIMI_BLOCK_DOCS
+    jobs = [(str(src), offs[i], min(step, len(offs) - i))
+            for i in range(0, len(offs), step)]
+    tokens: Dict[int, List[str]] = {}
+    t0 = time.perf_counter()
+    if processes <= 1:
+        for job in jobs:
+            tokens.update(dict(_statutes_of_slice(job)))
+    else:
+        with ProcessPoolExecutor(max_workers=processes) as pool:
+            for part in pool.map(_statutes_of_slice, jobs):
+                tokens.update(dict(part))
+                if verbose:
+                    print(f"  statutes {len(tokens)}/{len(offs)} "
+                          f"({time.perf_counter() - t0:.0f}s)",
+                          file=sys.stderr, flush=True)
+
+    # --- the sidecar is written first and always ------------------------
+    # judgments.jsonl is read by all three members, and on Windows a reader holds
+    # an exclusive-enough handle that os.replace fails outright.  So the authority
+    # for the statute facts is this small sidecar, which nothing else writes;
+    # folding it back into judgments.jsonl is a convenience attempted afterwards.
+    n_with = 0
+    n_tokens = 0
+    acts_seen: Dict[str, int] = {}
+    enriched: Dict[int, Tuple[List[str], List[str], str]] = {}
+    for doc_id, toks in tokens.items():
+        shim = JudgmentRecord(doc_id=doc_id, source_path="", title="", zones={})
+        zone_mod.attach_statute_zone(shim, toks)
+        enriched[doc_id] = (shim.statute_tokens, shim.acts,
+                            shim.zones.get("statutes", ""))
+        if shim.statute_tokens:
+            n_with += 1
+            n_tokens += len(shim.statute_tokens)
+        for a in shim.acts:
+            acts_seen[a] = acts_seen.get(a, 0) + 1
+
+    with STATUTES_SIDECAR.open("w", encoding="utf-8") as fh:
+        for doc_id in sorted(enriched):
+            toks, acts, zone_text = enriched[doc_id]
+            fh.write(json.dumps({"doc_id": doc_id, "statute_tokens": toks,
+                                 "acts": acts, "statutes_zone": zone_text},
+                                ensure_ascii=False))
+            fh.write("\n")
+
+    # --- best-effort fold back into the corpus --------------------------
+    merged: object = False
+    tmp = src.with_suffix(".jsonl.tmp")
+    try:
+        with src.open("r", encoding="utf-8") as fin, \
+                tmp.open("w", encoding="utf-8") as fout:
+            for line in fin:
+                line = line.strip()
+                if not line:
+                    continue
+                row = json.loads(line)
+                toks, acts, zone_text = enriched.get(
+                    int(row["doc_id"]), ([], [], ""))
+                row["statute_tokens"] = toks
+                row["acts"] = acts
+                zones = dict(row.get("zones") or {})
+                zones["statutes"] = zone_text
+                row["zones"] = zones
+                fout.write(json.dumps(row, ensure_ascii=False))
+                fout.write("\n")
+        _replace_with_retry(tmp, src)
+        merged = True
+    except OSError as exc:
+        tmp.unlink(missing_ok=True)
+        merged = f"deferred ({type(exc).__name__}: corpus held by another process)"
+        print(f"judgments.jsonl is locked; the statute facts are in "
+              f"{STATUTES_SIDECAR}.\n"
+              f"  re-run 'python -m nyaya.index.positional enrich' later to fold "
+              f"them in.", file=sys.stderr)
+
+    top = sorted(acts_seen.items(), key=lambda kv: -kv[1])[:12]
+    return {
+        "documents": len(offs),
+        "documents_with_statutes": n_with,
+        "statute_tokens_total": n_tokens,
+        "distinct_acts": len(acts_seen),
+        "top_acts": dict(top),
+        "sidecar": str(STATUTES_SIDECAR),
+        "merged_into_corpus": merged,
+        "seconds": round(time.perf_counter() - t0, 1),
+    }
 
 
 # ==========================================================================
@@ -1171,6 +1334,14 @@ def _cmd_build(args) -> int:
     return 0
 
 
+def _cmd_enrich(args) -> int:
+    with timed("enrich"):
+        out = enrich_corpus(processes=args.processes)
+    for k, v in out.items():
+        print(f"{k}: {v}")
+    return 0
+
+
 def _cmd_stats(args) -> int:
     idx = PositionalIndex.load(args.path)
     for k, v in idx.stats().items():
@@ -1228,6 +1399,11 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     b.add_argument("--out", default=None,
                    help="write to this directory instead of index/ (for tests)")
     b.set_defaults(func=_cmd_build)
+
+    e = sub.add_parser("enrich",
+                       help="fill the statutes zone of judgments.jsonl in place")
+    e.add_argument("--processes", type=int, default=INDEX_PROCESSES)
+    e.set_defaults(func=_cmd_enrich)
 
     s = sub.add_parser("stats", help="real numbers for the README")
     s.add_argument("--probe", nargs="*",
