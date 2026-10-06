@@ -98,6 +98,12 @@ from nyaya import config
 from nyaya.contracts import Posting, PostingsList
 from nyaya.utils import ensure_utf8_stdout, human, timed
 
+#: Workers for the inversion pass.  Fewer than EXTRACT_PROCESSES on purpose:
+#: each worker holds a whole SPIMI block of postings, so this pass is bound by
+#: memory rather than by CPU.  Measured on a 15 GB machine, 11 workers paged and
+#: stalled; 6 runs flat out.
+INDEX_PROCESSES = max(1, min(6, (os.cpu_count() or 4) - 1))
+
 NZONES = len(config.ZONES)
 ZONE_ID = config.ZONE_ID
 
@@ -358,13 +364,22 @@ class BlockStats:
     n_positions: int = 0
 
 
-def write_block(block_id: int, records: Sequence[Dict[str, Any]],
+def write_block(block_id: int, records: Iterable[Dict[str, Any]],
                 profile: IndexProfile, block_dir: Path) -> Dict[str, Any]:
-    """Invert ``records`` in memory and flush one SPIMI block, sorted by term."""
+    """Invert ``records`` in memory and flush one SPIMI block, sorted by term.
+
+    ``records`` is consumed as an *iterator* on purpose.  A 600-document slice of
+    judgments.jsonl is ~43 MB of JSON, which becomes several hundred MB of Python
+    dicts; holding all 600 at once in each of 11 workers put this 15 GB machine
+    into swap and the build stopped making progress.  Parsing one line at a time
+    and dropping it as soon as it is inverted keeps a worker's live set to one
+    document plus the block's own postings.
+    """
     postings: Dict[str, array] = {}
     stats = BlockStats()
     for rec in records:
         dt = analyse_record(rec, profile)
+        rec.clear()                    # the paragraphs are the bulk; let them go
         if dt.n_tokens == 0:
             continue
         _serialise_doc(dt, postings)
@@ -456,17 +471,18 @@ def _block_worker(job: Tuple[int, str, int, int, Dict[str, Any], str]
     profile = IndexProfile(name=prof["name"], out=Path(prof["out"]),
                            canonicalise=prof["canonicalise"], stem=prof["stem"],
                            zoned=prof["zoned"], stoplist=prof["stoplist"])
-    records = []
-    with open(src, "r", encoding="utf-8") as fh:
-        fh.seek(byte_start)
-        for _ in range(n_lines):
-            line = fh.readline()
-            if not line:
-                break
-            line = line.strip()
-            if line:
-                records.append(json.loads(line))
-    return write_block(block_id, records, profile, Path(block_dir))
+    def _stream():
+        with open(src, "r", encoding="utf-8") as fh:
+            fh.seek(byte_start)
+            for _ in range(n_lines):
+                line = fh.readline()
+                if not line:
+                    break
+                line = line.strip()
+                if line:
+                    yield json.loads(line)
+
+    return write_block(block_id, _stream(), profile, Path(block_dir))
 
 
 def _line_offsets(path: Path) -> List[int]:
@@ -655,7 +671,7 @@ def build(profile: Optional[IndexProfile] = None,
     src = Path(src or config.JUDGMENTS_JSONL)
     if not src.exists():
         raise SystemExit(f"{src} does not exist - run python -m nyaya.ingest build")
-    processes = processes or config.EXTRACT_PROCESSES
+    processes = processes or INDEX_PROCESSES
     out_dir = Path(profile.out)
     block_dir = out_dir / BLOCK_DIR
     if block_dir.exists():
@@ -1205,7 +1221,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     b.add_argument("--baseline", action="store_true", help="build index/baseline")
     b.add_argument("--both", action="store_true", help="build both indexes")
     b.add_argument("--limit", type=int, default=None)
-    b.add_argument("--processes", type=int, default=config.EXTRACT_PROCESSES)
+    b.add_argument("--processes", type=int, default=INDEX_PROCESSES)
     b.add_argument("--keep-blocks", action="store_true")
     b.add_argument("--no-statutes", action="store_true",
                    help="do not write statute tokens back to judgments.jsonl")
