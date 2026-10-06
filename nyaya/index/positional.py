@@ -997,6 +997,72 @@ def enrich_corpus(src: Optional[Path] = None,
     }
 
 
+def recompute_doc_norm(path=None, verbose: bool = True) -> Dict[str, Any]:
+    """Rebuild ``doc_norm`` in ``docmeta.npz`` from the postings already on disk.
+
+    Why this exists: ``doc_norm`` is the lnc cosine denominator, and lnc is
+    defined over *scoring* terms, so its value depends on the stop list.  Member
+    3 derives that list from the built index (it is a measured df list, not a
+    hand-written one), which means the first build necessarily bakes in a
+    slightly earlier version of it - measured drift after her refresh was mean
+    0.85%, p95 1.9%, max 4.5%.
+
+    Fixing it does **not** need a rebuild.  Every term frequency is already in
+    the index, so one pass over the postings recomputes the whole array exactly:
+    for each scoring term, add ``(1 + ln tf)**2`` to its documents, then take the
+    square root.  Seconds instead of ten minutes, and the positions, zone tfs and
+    dictionary are untouched - only the normaliser changes.
+    """
+    idx = PositionalIndex.load(path or config.INDEX)
+    stoplist = (idx.meta.get("profile") or {}).get("stoplist", "legal")
+    acc = np.zeros(idx.n_doc_slots, dtype=np.float64)
+    n_scoring = 0
+    n_skipped = 0
+    t0 = time.perf_counter()
+    for i, term in enumerate(idx._terms):
+        if _is_scoring_stopword(term, stoplist):
+            n_skipped += 1
+            continue
+        pl = idx.postings(term)
+        if pl is None:
+            continue
+        n_scoring += 1
+        tf = pl.tf_array().astype(np.float64)
+        w = 1.0 + np.log(tf)
+        np.add.at(acc, np.asarray(pl.doc_ids, dtype=np.int64), w * w)
+        if verbose and (i + 1) % 100_000 == 0:
+            print(f"  {i + 1}/{len(idx._terms)} terms "
+                  f"({time.perf_counter() - t0:.0f}s)", file=sys.stderr, flush=True)
+    new_norm = np.sqrt(acc).astype(np.float32)
+
+    old = np.asarray(idx.doc_norm, dtype=np.float64)
+    live = old > 0
+    drift = np.abs(new_norm[live] - old[live]) / old[live] if live.any() \
+        else np.zeros(0)
+
+    out = Path(path or config.INDEX) / DOCMETA_FILE
+    with np.load(out) as z:
+        arrays = {k: z[k] for k in z.files}
+    arrays["doc_norm"] = new_norm
+    # np.savez appends ".npz" unless the name already ends in it, so the temp
+    # file has to be "docmeta.tmp.npz", not "docmeta.npz.tmp".
+    tmp = out.with_name("docmeta.tmp.npz")
+    np.savez(tmp, **arrays)
+    _replace_with_retry(tmp, out)
+    return {
+        "path": str(out),
+        "stoplist": stoplist,
+        "scoring_terms": n_scoring,
+        "stop_terms_skipped": n_skipped,
+        "documents": int(live.sum()),
+        "drift_mean_pct": round(float(drift.mean() * 100), 4) if drift.size else 0.0,
+        "drift_p95_pct": round(float(np.percentile(drift, 95) * 100), 4)
+        if drift.size else 0.0,
+        "drift_max_pct": round(float(drift.max() * 100), 4) if drift.size else 0.0,
+        "seconds": round(time.perf_counter() - t0, 1),
+    }
+
+
 # ==========================================================================
 # 6. Read side
 # ==========================================================================
@@ -1342,6 +1408,12 @@ def _cmd_enrich(args) -> int:
     return 0
 
 
+def _cmd_docmeta(args) -> int:
+    for k, v in recompute_doc_norm(args.path).items():
+        print(f"{k}: {v}")
+    return 0
+
+
 def _cmd_stats(args) -> int:
     idx = PositionalIndex.load(args.path)
     for k, v in idx.stats().items():
@@ -1404,6 +1476,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
                        help="fill the statutes zone of judgments.jsonl in place")
     e.add_argument("--processes", type=int, default=INDEX_PROCESSES)
     e.set_defaults(func=_cmd_enrich)
+
+    dm = sub.add_parser("docmeta",
+                        help="recompute doc_norm from the postings (no rebuild)")
+    dm.set_defaults(func=_cmd_docmeta)
 
     s = sub.add_parser("stats", help="real numbers for the README")
     s.add_argument("--probe", nargs="*",

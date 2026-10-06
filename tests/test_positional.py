@@ -638,3 +638,60 @@ def test_the_dictionary_records_the_profile_so_an_index_is_self_describing(index
     assert prof["zoned"] is True
     assert idx.meta["zones"] == list(config.ZONES)
     assert idx.meta["spimi_block_docs"] == 2
+
+
+# --------------------------------------------------------------------------
+# Recomputing doc_norm without a rebuild
+# --------------------------------------------------------------------------
+
+
+def test_recompute_doc_norm_reproduces_the_build_time_value_exactly(index):
+    """The regression test that matters: on an unchanged stop list the
+    postings-only recomputation must reproduce the array the builder wrote.
+
+    Measured on the real corpus this came out at 0.0% drift for the baseline
+    index (whose standard stop list had not changed) and 0.69% mean for the full
+    index (whose measured domain list had), which is exactly the expected
+    behaviour of a correct recomputation.
+    """
+    idx, _ids, _meta = index
+    before = np.array(idx.doc_norm, copy=True)
+    out = P.recompute_doc_norm(idx.path, verbose=False)
+    assert out["drift_max_pct"] == pytest.approx(0.0, abs=1e-3)
+    reloaded = P.PositionalIndex.load(idx.path)
+    assert np.allclose(reloaded.doc_norm, before, rtol=1e-5)
+
+
+def test_recompute_doc_norm_leaves_everything_else_untouched(index):
+    idx, _ids, _meta = index
+    vocab, postings, positions = idx.vocab_size, idx._df.sum(), idx._npos.sum()
+    doc_len = np.array(idx.doc_len, copy=True)
+    zone_len = np.array(idx.zone_len, copy=True)
+    P.recompute_doc_norm(idx.path, verbose=False)
+    after = P.PositionalIndex.load(idx.path)
+    assert after.vocab_size == vocab
+    assert after._df.sum() == postings and after._npos.sum() == positions
+    assert np.array_equal(after.doc_len, doc_len)
+    assert np.array_equal(after.zone_len, zone_len)
+    assert after.n_sentences(_ids[0]) > 0
+
+
+def test_recompute_doc_norm_uses_the_profiles_own_stop_list(tmp_path, corpus,
+                                                            monkeypatch):
+    """B0 and the full system must not end up with the same denominator."""
+    src, ids = corpus
+    monkeypatch.setattr(config, "SPIMI_BLOCK_DOCS", 2)
+    monkeypatch.setattr(P.config, "SPIMI_BLOCK_DOCS", 2)
+    full = tmp_path / "f"
+    base = tmp_path / "b"
+    P.build(P.full_profile(full), src=src, processes=1, persist_statutes=False,
+            verbose=False)
+    P.build(P.baseline_profile(base), src=src, processes=1,
+            persist_statutes=False, verbose=False)
+    assert P.recompute_doc_norm(full, verbose=False)["stoplist"] == "legal"
+    assert P.recompute_doc_norm(base, verbose=False)["stoplist"] == "standard"
+    fi = P.PositionalIndex.load(full)
+    bi = P.PositionalIndex.load(base)
+    d = ids[0]
+    # the legal list removes strictly more terms, so its norm is no larger
+    assert float(fi.doc_norm[d]) <= float(bi.doc_norm[d]) + 1e-6
