@@ -31,6 +31,7 @@ Author: Sumedha (M3)
 from __future__ import annotations
 
 import re
+from dataclasses import dataclass
 from typing import Dict, Iterable, List, Optional, Tuple
 
 # ==========================================================================
@@ -64,8 +65,8 @@ _ACT_SOURCES: List[Tuple[str, str]] = [
              r"(?:\s*,?\s*(?:1987|1985))?|tada\b"),
     ("POTA", r"prevention\s+of\s+terrorism\s+act(?:\s*,?\s*2002)?|pota\b"),
     ("NI", r"negotiable\s+instruments\s+act(?:\s*,?\s*1881)?|n\.\s?i\.?\s*act"),
-    ("COMP", r"companies\s+act(?:\s*,?\s*(?:1956|2013))?"),
-    ("ITA", r"income[\s-]*tax\s+act(?:\s*,?\s*(?:1961|1922))?|i\.\s?t\.?\s*act"),
+    ("COMP", r"(?:indian\s+)?companies\s+act(?:\s*,?\s*(?:1956|2013))?"),
+    ("ITA", r"(?:indian\s+)?income[\s-]*tax\s+act(?:\s*,?\s*(?:1961|1922))?|i\.\s?t\.?\s*act"),
     ("MVA", r"motor\s+vehicles\s+act(?:\s*,?\s*(?:1988|1939))?|m\.\s?v\.?\s*act"),
     ("ARB", r"arbitration\s+and\s+conciliation\s+act(?:\s*,?\s*1996)?|arbitration\s+act"),
     ("SARFAESI", r"securitisation\s+and\s+reconstruction\s+of\s+financial\s+assets"
@@ -165,15 +166,20 @@ def act_code(surface: str) -> Optional[str]:
 # does not parse the "I" of I.P.C. as the suffix of section 302.
 _SEC_NUM = (
     r"\d{1,4}"
-    r"(?:\s*-\s*[A-Za-z]{1,2}|[A-Za-z]{1,2}\b|\s+(?!of\b|and\b|or\b|to\b|read\b|r/w)[A-Z](?![.\w]))?"
+    # the \b after the hyphenated suffix matters: without it, the S.C.R. headnote
+    # "Penal Code, 1860-s. 302-Murder" parsed as section "302-Mu".
+    r"(?:\s*-\s*[A-Za-z]{1,2}\b|[A-Za-z]{1,2}\b"
+    # A *spaced* single capital is accepted ("s. 304 B") but not when the next
+    # word is "of": the OCR'd "Article 32 B of the Constitution" is Article 32.
+    r"|\s+(?!of\b|and\b|or\b|to\b|read\b|r/w)[A-Z](?![.\w])(?!\s+of\b))?"
     r"(?:\s*\(\s*[0-9A-Za-z]{1,3}\s*\))*"
 )
 
 # The words that introduce a section.  "§" is deliberately NOT included: leaving
 # it out is what makes canonicalise_statutes() idempotent, since a token that is
 # already "ipc§302" must not be re-parsed.
-_SECTION_WORD = r"(?:u/s\.?|under\s+sections?|sections?|sects?\.?|secs?\.?|ss\.?|s\.)"
-_ARTICLE_WORD = r"(?:articles?|arts?\.|art(?=\s*\d))"
+_SECTION_WORD = r"(?:u/s\.?|under\s+sections?|sections?|sects?[.,]?|secs?[.,]?|ss[.,]?|s\.)"
+_ARTICLE_WORD = r"(?:articles?|arts?[.,]|art(?=\s*\d))"
 
 # "302, 307 and 34", "302/34", "391 to 393", "420 r/w 34"
 _SEP = r"(?:\s*(?:,|;|&|/|and|or|to|r/w|read\s+with)\s*)"
@@ -184,9 +190,39 @@ _SEC_LIST = rf"{_SEC_NUM}(?:{_SEP}(?:{_SECTION_WORD}\s*)?{_SEC_NUM})*"
 # followed by "of (the) ... Act/Code/Rules" is left alone.  The guard is narrow:
 # the act phrase must start with "of" and contain no sentence-ending punctuation,
 # so an ordinary "...under Section 34.  The Act provides..." is unaffected.
+# PDF text wraps mid-phrase, so the gap must tolerate a single newline ("of the
+# Finance \nAct, 1920" was a measured false positive) but not a blank line, which
+# would mean the "Act" belongs to the next paragraph.
+_GAP = r"(?:[^.;:\n]|\n(?!\s*\n)){0,60}?"
 _UNKNOWN_ACT_AHEAD = (
-    r"(?!\s*,?\s*of\s+(?:the\s+)?[^.;:\n]{0,60}?"
+    rf"(?!\s*,?\s*of\s+(?:the\s+)?{_GAP}"
     r"\b(?:act|code|sanhita|adhiniyam|rules?|regulations?|ordinance|constitution)\b)"
+)
+
+# "Middleton v. Texas Power and Light Co. (249 U.S. 152)" — the "S. 152" there is
+# a US Reports page, not a section.  A bare "s."/"ss." immediately preceded by
+# another dotted initial is part of a reporter abbreviation, never a section.
+_NOT_IN_ABBREV = r"(?<![A-Za-z]\.)"
+
+#: What may sit between a section list and the name of its act.  Judgments write
+#: "s. 302 of the Indian Penal Code", "s. 302, IPC", and in the S.C.R. headnote
+#: style "Penal Code, 1860-s. 302-Murder".  The optional "indian" matters: the
+#: measured recall misses were dominated by "of the Indian Income-tax Act".
+_CONNECTOR = r"\s*(?:[,\-–:;]\s*)?(?:of\s+)?(?:the\s+)?(?:indian\s+)?"
+
+#: "of the Constitution", "of our Constitution", "of the Indian Constitution".
+_CONSTITUTION_AHEAD = (
+    r"\s*(?:[,\-–]\s*)?(?:of\s+)?(?:the|our|its|this)?\s*"
+    r"(?:indian\s+)?constitution(?:\s+of\s+india)?"
+)
+
+#: Like _UNKNOWN_ACT_AHEAD but WITHOUT "constitution" in the act-word list.
+#: The Article shape needs its own: the shared guard lists "constitution" as an
+#: act word, which made it block the very phrase it should accept
+#: ("article 14 of our Constitution" was a measured recall miss).
+_OTHER_ACT_AHEAD = (
+    rf"(?!\s*,?\s*of\s+(?:the\s+)?{_GAP}"
+    r"\b(?:act|code|sanhita|adhiniyam|rules?|regulations?|ordinance)\b)"
 )
 
 #: "the Constitution 42nd Amendment" must not read as Article 42nd.
@@ -196,21 +232,24 @@ _NOT_ORDINAL = r"(?!\d+(?:st|nd|rd|th)\b)"
 #: section number at all.
 _ORDER_RULE = (
     r"\border\s*(?:no\.?\s*)?(?P<ord_num>[ivxl]+|\d{1,2})\s*,?\s*"
-    r"(?:r\.|rules?)\s*(?P<rule_num>\d{1,3}[a-z]?)"
+    r"(?:r\.|rules?)\s*(?P<rule_num>\d{1,3}[a-z]?)(?![0-9A-Za-z])"
 )
 
 MASTER = re.compile(
     rf"""
-      (?P<sec_act>\b{_SECTION_WORD}\s*(?P<sa_list>{_SEC_LIST})\s*(?:,\s*)?
-                  (?:of\s+)?(?:the\s+)?(?P<sa_act>{_ACT}))
-    | (?P<art>\b{_ARTICLE_WORD}\s*{_NOT_ORDINAL}(?P<ar_list>(?>{_SEC_LIST}))(?![0-9A-Za-z])
-              (?:(?:\s*(?:,\s*)?(?:of\s+)?(?:the\s+)?constitution(?:\s+of\s+india)?)
-                 |{_UNKNOWN_ACT_AHEAD}))
-    | (?P<ordrule>{_ORDER_RULE}(?:\s*(?:,\s*)?(?:of\s+)?(?:the\s+)?(?P<or_act>{_ACT}))?)
-    | (?P<act_sec>\b(?P<as_act>{_ACT})\s*(?:,\s*)?{_SECTION_WORD}\s*(?P<as_list>{_SEC_LIST}))
+      (?P<sec_act>\b{_SECTION_WORD}\s*(?P<sa_list>{_SEC_LIST})
+                  {_CONNECTOR}(?P<sa_act>{_ACT}))
+    | (?P<art>\b{_ARTICLE_WORD}\s*{_NOT_ORDINAL}
+              (?P<ar_list>(?>{_SEC_LIST}))(?![0-9A-Za-z'’])
+              (?:{_CONSTITUTION_AHEAD}|{_OTHER_ACT_AHEAD}))
+    | (?P<ordrule>{_ORDER_RULE}
+                  (?:{_CONNECTOR}(?P<or_act>{_ACT})|{_UNKNOWN_ACT_AHEAD}))
+    | (?P<act_sec>\b(?P<as_act>{_ACT})\s*(?:[,\-–:;]\s*)?
+                  {_SECTION_WORD}\s*(?P<as_list>{_SEC_LIST}))
     | (?P<act_num>\b(?P<an_act>{_ACT})\s*,?\s*{_NOT_ORDINAL}(?P<an_list>\d{{1,3}}[A-Za-z]{{0,2}})\b)
     | (?P<act_only>\b(?P<ao_act>{_ACT}))
-    | (?P<sec_only>\b{_SECTION_WORD}\s*(?P<so_list>(?>{_SEC_LIST}))(?![0-9A-Za-z])
+    | (?P<sec_only>{_NOT_IN_ABBREV}\b{_SECTION_WORD}\s*
+                   (?P<so_list>(?>{_SEC_LIST}))(?![0-9A-Za-z])
                    {_UNKNOWN_ACT_AHEAD})
     """,
     re.I | re.X,
@@ -224,14 +263,40 @@ STATUTE_TOKEN_RE = re.compile(r"[a-z]{2,10}§[0-9]+[a-z]*(?:o[0-9]+r[0-9]+[a-z]?
 CANON_TOKEN_RE = re.compile(r"\b[a-z]{2,10}§[0-9a-z]+\b")
 
 
-def _roman_to_int(s: str) -> int:
-    s = s.lower()
+def _roman_value(s: str) -> int:
     total, prev = 0, 0
-    for ch in reversed(s):
+    for ch in reversed(s.lower()):
         v = _ROMAN.get(ch, 0)
         total = total - v if v < prev else total + v
         prev = max(prev, v)
     return total
+
+
+def _int_to_roman(n: int) -> str:
+    out, table = "", ((100, "c"), (90, "xc"), (50, "l"), (40, "xl"),
+                      (10, "x"), (9, "ix"), (5, "v"), (4, "iv"), (1, "i"))
+    for v, sym in table:
+        while n >= v:
+            out += sym
+            n -= v
+    return out
+
+
+def _roman_to_int(s: str) -> int:
+    """Roman numeral -> int, tolerating the one OCR error that matters.
+
+    Scanned S.C.R. volumes routinely print "Order XXIII" as "Order XXlll" —
+    lower-case L for capital I.  Read literally that is 130, which silently
+    produced ``cpc§o130r3`` in the measurement.  So: accept the reading only if
+    it round-trips to the same numeral; otherwise retry with l->i, and give up
+    (return 0, i.e. no token) rather than emit a wrong Order number.  CPC Orders
+    stop at LI, so anything above 60 is an error by definition.
+    """
+    for cand in (s.lower(), s.lower().replace("l", "i")):
+        n = _roman_value(cand)
+        if 0 < n <= 60 and _int_to_roman(n) == cand:
+            return n
+    return 0
 
 
 def normalise_section(raw: str) -> str:
@@ -268,6 +333,20 @@ def _expand_list(span: str, act: str) -> List[str]:
 #: Default for the act-inheritance heuristic.  `analyze` exposes it as a flag so
 #: the ablation ("how much does inheritance buy?") is a measurement, not a guess.
 INHERIT_ACT_DEFAULT = True
+
+#: How far a named act may reach forward to a bare section number, in characters
+#: of the same paragraph.  Measured: without a limit, a bare "section 2" five
+#: hundred characters after an unrelated act reference was the single largest
+#: source of wrong canonical tokens.  ~700 characters is about three sentences,
+#: which is the realistic scope of "the act we are talking about".
+INHERIT_MAX_CHARS = 700
+
+#: A *section* belongs to an Act; a *provision of the Constitution* is an
+#: Article.  Judgments obey this absolutely, so a bare "section 302" must never
+#: inherit CONST however recently the Constitution was named.  This single rule
+#: removed most of the measured inheritance false positives, and it is the kind of
+#: domain fact a generic normaliser cannot know.
+NEVER_INHERIT = frozenset({"CONST"})
 
 #: Seed act for the *query* side only.  A user who types "sec. 302" or "s. 420"
 #: with no act almost always means the Penal Code, so the query normaliser passes
@@ -321,12 +400,97 @@ def canonicalise_statutes(
     return "".join(out_parts)
 
 
-def _canonicalise_paragraph(
+@dataclass
+class StatuteSpan:
+    """One recognised statute mention: where it was, and what it became.
+
+    Exposed so that (a) the precision/recall measurement can hand-check real
+    matches against their surrounding text, and (b) M1's snippet generator can
+    highlight the original wording while the index holds the canonical token.
+    """
+
+    start: int
+    end: int
+    surface: str
+    tokens: List[str]
+    shape: str                 # which pattern fired
+    act: Optional[str]
+    inherited: bool = False    # the act came from the paragraph, not this span
+
+
+def iter_statute_spans(
+    text: str,
+    *,
+    inherit_act: bool = INHERIT_ACT_DEFAULT,
+    default_act: Optional[str] = None,
+) -> List[StatuteSpan]:
+    """Every statute mention in ``text``, with offsets into ``text``."""
+    spans: List[StatuteSpan] = []
+    offset = 0
+    for chunk in _PARA_SPLIT.split(text):
+        if not _PARA_SPLIT.fullmatch(chunk):
+            for sp in _paragraph_spans(chunk, inherit_act, default_act):
+                sp.start += offset
+                sp.end += offset
+                spans.append(sp)
+        offset += len(chunk)
+    return spans
+
+
+#: Words that, standing immediately before "Article(s)", mean the articles belong
+#: to some other instrument.  Measured false positives: "Portuguese Civil
+#: Code-Articles 474, 505, 510" and "Civil Service Regulations ... Article 465A".
+_OTHER_INSTRUMENT_BEHIND = re.compile(
+    r"\b(?:code|act|regulations?|rules?|convention|treaty|charter|statute|"
+    r"ordinance|agreement|articles\s+of\s+association|memorandum)\s*"
+    r"[-–—,:;()\s]{0,4}$",
+    re.I,
+)
+
+
+#: An instrument named *immediately* before a bare section number, with only
+#: punctuation, a year or whitespace in between — the S.C.R. headnote shape
+#: "... Rules, 1957 - Section 43".
+_INSTRUMENT_ADJACENT = re.compile(
+    r"\b(?:act|code|rules?|regulations?|ordinance|sanhita|adhiniyam|scheme|"
+    r"bye-?laws?|order)\b[\s,.:;0-9()\-–]*$",
+    re.I,
+)
+_ANY_ACT = re.compile(_ACT, re.I)
+
+
+def _unknown_instrument_behind(text: str, start: int) -> bool:
+    """Is a bare section number sitting right after an instrument we do not know?
+
+    S.C.R. headnotes read "Kerala State Electricity Board Rules, 1957 - Section
+    43/Rule 68".  Inheriting whatever act was named earlier in the paragraph
+    files that under the wrong statute, which is what the measurement showed.
+    So if an instrument is named immediately before the section and it is not one
+    we recognise, the inheritance heuristic stands down.  When it *is*
+    recognised ("Indian Penal Code, 1860: Sections 53-A, 55 and 302")
+    inheritance proceeds, and when no instrument is adjacent at all
+    ("Code of Criminal Procedure (Act V of 1898) ss. 439, 209") this test says
+    nothing and the other guards decide.
+    """
+    window = text[max(0, start - 30):start]
+    if not _INSTRUMENT_ADJACENT.search(window):
+        return False
+    return not _ANY_ACT.search(window)
+
+
+def _preceded_by_other_instrument(text: str, start: int) -> bool:
+    window = text[max(0, start - 60):start]
+    if re.search(r"\bconstitution\b\s*[-,:;()\s]{0,4}$", window, re.I):
+        return False
+    return bool(_OTHER_INSTRUMENT_BEHIND.search(window))
+
+
+def _paragraph_spans(
     text: str, inherit_act: bool, default_act: Optional[str]
-) -> str:
+) -> List[StatuteSpan]:
     current_act: Optional[str] = default_act
-    out: List[str] = []
-    last = 0
+    act_at = -10 ** 9 if default_act is None else 0
+    spans: List[StatuteSpan] = []
 
     for m in MASTER.finditer(text):
         toks: List[str] = []
@@ -335,12 +499,14 @@ def _canonicalise_paragraph(
         if m.group("sec_act") is not None:
             act = act_code(m.group("sa_act"))
             if act:
-                current_act = act
+                current_act, act_at = act, m.end()
                 toks = _expand_list(m.group("sa_list"), act)
             else:
                 replace = False
         elif m.group("art") is not None:
-            current_act = "CONST"
+            if _preceded_by_other_instrument(text, m.start()):
+                continue            # "Portuguese Civil Code - Articles 474, 505"
+            act, current_act, act_at = "CONST", "CONST", m.end()
             toks = _expand_list(m.group("ar_list"), "CONST")
         elif m.group("ordrule") is not None:
             act = act_code(m.group("or_act")) if m.group("or_act") else current_act
@@ -350,31 +516,37 @@ def _canonicalise_paragraph(
             o_i = _roman_to_int(o) if not o.isdigit() else int(o)
             rule = m.group("rule_num").lower()
             if o_i:
-                current_act = act
+                current_act, act_at = act, m.end()
                 toks = [f"{act.lower()}§o{o_i}r{rule}"]
             else:
                 replace = False
         elif m.group("act_sec") is not None:
             act = act_code(m.group("as_act"))
             if act:
-                current_act = act
+                current_act, act_at = act, m.end()
                 toks = _expand_list(m.group("as_list"), act)
             else:
                 replace = False
         elif m.group("act_num") is not None:
             act = act_code(m.group("an_act"))
             if act:
-                current_act = act
+                current_act, act_at = act, m.end()
                 toks = _expand_list(m.group("an_list"), act)
             else:
                 replace = False
         elif m.group("act_only") is not None:
             act = act_code(m.group("ao_act"))
             if act:
-                current_act = act          # context only — the words stay as text
+                current_act, act_at = act, m.end()   # context only; words stay
             replace = False
         else:                               # sec_only
             act = current_act if inherit_act else default_act
+            if act in NEVER_INHERIT and act is not default_act:
+                act = None              # a section is never a constitutional one
+            elif act is current_act and m.start() - act_at > INHERIT_MAX_CHARS:
+                act = None              # the act was named too long ago to trust
+            elif act is current_act and _unknown_instrument_behind(text, m.start()):
+                act = None              # this section belongs to some other Act
             if act:
                 toks = _expand_list(m.group("so_list"), act)
             else:
@@ -382,10 +554,25 @@ def _canonicalise_paragraph(
 
         if not replace or not toks:
             continue
-        out.append(text[last:m.start()])
-        out.append(" " + " ".join(toks) + " ")
-        last = m.end()
+        shape = next(k for k in ("sec_act", "art", "ordrule", "act_sec",
+                                 "act_num", "sec_only")
+                     if m.group(k) is not None)
+        spans.append(StatuteSpan(
+            start=m.start(), end=m.end(), surface=m.group(0), tokens=toks,
+            shape=shape, act=act, inherited=(shape == "sec_only"),
+        ))
+    return spans
 
+
+def _canonicalise_paragraph(
+    text: str, inherit_act: bool, default_act: Optional[str]
+) -> str:
+    out: List[str] = []
+    last = 0
+    for sp in _paragraph_spans(text, inherit_act, default_act):
+        out.append(text[last:sp.start])
+        out.append(" " + " ".join(sp.tokens) + " ")
+        last = sp.end
     out.append(text[last:])
     return "".join(out)
 

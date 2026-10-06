@@ -292,3 +292,136 @@ def test_crosswalk_table_is_well_formed():
 def test_expand_statutes_builds_the_query_expansion_map():
     out = S.expand_statutes(["ipc§302", "const§21", "ipc§498a"])
     assert out == {"ipc§302": ["bns§103"], "ipc§498a": ["bns§85", "bns§86"]}
+
+
+# ==========================================================================
+# 6. Regressions found by MEASURING on real judgment text
+# ==========================================================================
+# Each of these was a hand-checked error in a 40-span precision sample or a
+# recall miss drawn from 151 real Supreme Court PDFs.  They are the reason the
+# measured precision moved from 82.5% to ~92% and recall on named acts from
+# 92.1% to 96.0%, so they must not regress.
+
+
+class TestMeasuredFalsePositives:
+    def test_a_us_reports_page_is_not_a_section(self):
+        """"Middleton v. Texas Power (249 U.S. 152)" parsed "S. 152"."""
+        assert S.extract_statutes(
+            "Section 302 IPC. See Middleton v. Texas Power (249 U.S. 152)."
+        ) == ["ipc§302"]
+
+    def test_a_foreign_code_does_not_borrow_the_constitution(self):
+        """"Portuguese Civil Code-Articles 474, 505" produced five const tokens."""
+        assert S.extract_statutes("Portuguese Civil Code-Articles 474, 505, 510") == []
+
+    def test_a_section_never_inherits_the_constitution(self):
+        """Provisions of the Constitution are Articles, never sections, so a bare
+        "section 3" must not become const§3 however recently Art. 32 was named."""
+        text = "Article 32 of the Constitution and under section 3 of this Act"
+        assert S.extract_statutes(text) == ["const§32"]
+        assert "CONST" in S.NEVER_INHERIT
+
+    def test_inheritance_does_not_reach_across_a_long_distance(self):
+        far = "Section 302 of the Indian Penal Code. " + ("filler words " * 70) + \
+              "He was also charged under Section 34."
+        assert S.extract_statutes(far) == ["ipc§302"]
+        near = "Section 302 of the Indian Penal Code. He was charged under Section 34."
+        assert S.extract_statutes(near) == ["ipc§302", "ipc§34"]
+
+    def test_inheritance_stands_down_after_an_unknown_instrument(self):
+        """"Kerala State Electricity Board Rules, 1957- Section 43" became pca§43."""
+        text = ("Section 5 of the Prevention of Corruption Act. Electricity "
+                "(Supply) Act, 1948, Kerala Board Rules, 1957- Section 43")
+        assert S.extract_statutes(text) == ["pca§5"]
+
+    def test_inheritance_still_fires_after_a_known_instrument(self):
+        """The S.C.R. headnote shape must keep working."""
+        assert S.extract_statutes(
+            "Indian Penal Code, 1860:  Sections 53-A, 55 and 302-Imprisonment"
+        ) == ["ipc§53a", "ipc§55", "ipc§302"]
+        assert S.extract_statutes(
+            "Code of Criminal Procedure (Act V of 1898) ss. 439, 209, 210"
+        ) == ["crpc§439", "crpc§209", "crpc§210"]
+
+    def test_ocr_lowercase_l_for_capital_i_in_an_order_number(self):
+        """Scanned volumes print "Order XXIII" as "Order XXlll", which read
+        literally is 130."""
+        assert S.extract_statutes("Order XXlll Rule 3 of the Code of Civil "
+                                  "Procedure") == ["cpc§o23r3"]
+        assert S.extract_statutes("Order XXIII Rule 3A CPC") == ["cpc§o23r3a"]
+
+    def test_a_nonsense_order_number_emits_nothing_rather_than_a_wrong_one(self):
+        """Better no token than a confidently wrong one: a roman numeral that is
+        not canonical, or above the CPC's highest Order (LI), is rejected."""
+        assert S._roman_to_int("XXIII") == 23
+        assert S._roman_to_int("IIII") == 0        # not canonical
+        assert S._roman_to_int("CCC") == 0         # 300 > 60, impossible
+        assert S.extract_statutes("Order CCC Rule 3 CPC") == []
+
+    def test_a_spaced_capital_before_of_is_not_a_subsection(self):
+        """"Article 32 B of the Constitution" is Article 32 with OCR noise."""
+        assert S.extract_statutes(
+            "under Article 32 B of the Constitution of India") == ["const§32"]
+        # but a genuine spaced sub-section still works
+        assert S.extract_statutes("Section 304 B IPC") == ["ipc§304b"]
+
+    def test_an_order_of_some_other_rules_is_not_a_cpc_order(self):
+        """"Order IV, Rule 12, of the Supreme Court Rules" became cpc§o4r12."""
+        assert S.extract_statutes(
+            "Order IV, Rule 12, of the Supreme Court Rules") == []
+        assert S.extract_statutes("Order IV, Rule 12 CPC") == ["cpc§o4r12"]
+
+    def test_a_headnote_hyphen_is_not_a_subsection_letter(self):
+        """"Penal Code, 1860-s. 302-Murder" produced section "302-Mu"."""
+        assert S.extract_statutes("Penal Code, 1860-s. 302-Murder") == ["ipc§302"]
+
+
+class TestMeasuredRecallMisses:
+    @pytest.mark.parametrize(
+        "surface,expected",
+        [
+            ("article 14 of our Constitution", "const§14"),
+            ("article 286 of the Indian Constitution", "const§286"),
+            ("Art. 133(1) of the Constitution", "const§133"),
+            # the act name is routinely preceded by "Indian"
+            ("s. 4A(b) of the Indian Income-tax Act, 1922", "ita§4a"),
+            ("s. 66(1) of the Indian Income Tax Act, 1922", "ita§66"),
+            ("section 34 of the Indian Income-tax Act", "ita§34"),
+            ("s. 155 of the Indian Evidence Act", "evid§155"),
+            # S.C.R. headnote punctuation
+            ("ss. 177, 239-Indian Penal Code", "ipc§177"),
+            ("Code of Criminal Procedure 1898, s. 498", "crpc§498"),
+            ("Section 16 of Hindu Marriage Act, 1955", "hma§16"),
+            # the reporter writes a comma where a full stop belongs
+            ("Arts, 31A- Validity", "const§31a"),
+            ("Sec 302 of the Penal Code", "ipc§302"),
+            ("s. 409 I. P. C.", "ipc§409"),           # spaced dotted abbreviation
+            ("u/s.302 r/w s.149 IPC", "ipc§302"),
+        ],
+    )
+    def test_surface_forms_the_measurement_found_missing(self, surface, expected):
+        assert expected in S.extract_statutes(surface), S.extract_statutes(surface)
+
+
+class TestStatuteSpans:
+    def test_spans_report_offsets_tokens_and_whether_the_act_was_inherited(self):
+        text = "He was convicted under Section 302 of the Indian Penal Code, 1860 and u/s 34."
+        spans = S.iter_statute_spans(text)
+        assert [s.tokens for s in spans] == [["ipc§302"], ["ipc§34"]]
+        assert [s.inherited for s in spans] == [False, True]
+        assert [s.act for s in spans] == ["IPC", "IPC"]
+        for s in spans:
+            assert text[s.start:s.end] == s.surface
+
+    def test_spans_are_ordered_and_non_overlapping(self):
+        text = ("Articles 14, 19 and 21 of the Constitution were pressed, as was "
+                "Section 482 of the Code of Criminal Procedure.")
+        spans = S.iter_statute_spans(text)
+        assert all(a.end <= b.start for a, b in zip(spans, spans[1:]))
+
+    def test_spans_survive_a_paragraph_break_with_correct_offsets(self):
+        text = "Section 302 IPC applies.\n\nArticle 21 of the Constitution applies."
+        spans = S.iter_statute_spans(text)
+        assert [s.tokens for s in spans] == [["ipc§302"], ["const§21"]]
+        for s in spans:
+            assert text[s.start:s.end] == s.surface
