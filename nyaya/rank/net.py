@@ -253,7 +253,8 @@ def eliminate_low_idf_terms(terms: Sequence[str], index,
 
 
 def eliminate_documents(candidates: np.ndarray, terms: Sequence[str], index,
-                        many_terms: int = config.MANY_TERMS
+                        many_terms: int = config.MANY_TERMS,
+                        max_matches: int = None
                         ) -> Tuple[np.ndarray, int]:
     """For a long query, score only documents matching at least half the terms.
 
@@ -262,12 +263,21 @@ def eliminate_documents(candidates: np.ndarray, terms: Sequence[str], index,
     Requiring ``ceil(n/2)`` matches is the textbook cut.  Short queries are left
     alone: with two terms, "at least half" means one, which eliminates nothing and
     would only cost a pass.
+
+    **The half-rule is capped at ``config.ELIMINATION_MAX_MATCHES``.**  Manning's
+    formulation assumes a query of a handful of words.  Track B builds queries
+    from a judgment's facts — 60 terms — and "at least half" then demands 30
+    matching terms, which is not an optimisation but a near-conjunction: it took
+    one 13,878-document candidate set down to 19 documents and destroyed recall.
+    The purpose of the rule is to skip documents matching only one term out of
+    many, and that purpose is served long before 30.
     """
     cands = np.asarray(candidates, dtype=np.int32)
     n_terms = len(terms)
     if n_terms < many_terms or index is None or cands.size == 0:
         return cands, 1
-    required = (n_terms + 1) // 2
+    cap = (config.ELIMINATION_MAX_MATCHES if max_matches is None else max_matches)
+    required = min((n_terms + 1) // 2, max(int(cap), 1))
     counts = np.zeros(cands.size, dtype=np.int16)
     order = np.argsort(cands)
     sorted_cands = cands[order]

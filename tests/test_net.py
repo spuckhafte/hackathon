@@ -477,3 +477,36 @@ def test_elimination_report_json():
 def test_elimination_report_handles_zero():
     r = EliminationReport()
     assert r.fraction_saved == 0.0
+
+
+def test_the_half_rule_is_capped_for_very_long_queries():
+    """A 60-term query must not demand 30 matching terms.
+
+    Found by Track B: "at least half" on a facts-derived query is a conjunction
+    in disguise — it cut a 13,878-document candidate set to 19 and destroyed
+    recall.  The cap keeps the rule's purpose (skip documents matching one term
+    out of many) without turning an OR into an AND.
+    """
+    idx = StubIndex()
+    terms = ["privacy", "detention", "article", "safeguard"] * 15   # 60 terms
+    _out, required = eliminate_documents(np.arange(100, dtype=np.int32), terms, idx)
+    assert required == config.ELIMINATION_MAX_MATCHES
+    assert required < (len(terms) + 1) // 2
+
+
+def test_short_and_medium_queries_are_unaffected_by_the_cap():
+    """The cap must not change any previously measured number."""
+    idx = StubIndex()
+    for n, expected in ((4, 2), (5, 3), (7, 4), (8, 4), (12, 6)):
+        terms = (["privacy", "detention", "article", "safeguard"] * 4)[:n]
+        _out, required = eliminate_documents(np.arange(100, dtype=np.int32),
+                                             terms, idx)
+        assert required == min(expected, config.ELIMINATION_MAX_MATCHES), n
+
+
+def test_the_cap_is_overridable_for_an_ablation():
+    idx = StubIndex()
+    terms = ["privacy", "detention", "article", "safeguard"] * 15
+    _out, required = eliminate_documents(np.arange(100, dtype=np.int32), terms,
+                                         idx, max_matches=2)
+    assert required == 2

@@ -117,3 +117,15 @@ BRIEF_COSINE_THRESHOLD = 0.20
 SPIMI_BLOCK_DOCS = 600        # documents inverted in memory before a block is flushed
 DOWNLOAD_THREADS = 24
 EXTRACT_PROCESSES = max(1, (os.cpu_count() or 4) - 1)
+
+# --- added by Suvrat ---
+#: Index elimination requires a document to match at least half the query terms
+#: once a query has MANY_TERMS or more (Manning, IIR 7.1.1).  That rule is written
+#: for short queries; on a 60-term query built from a judgment's facts (Track B)
+#: "half" means 30 terms and the filter becomes very nearly a conjunction — it
+#: collapsed one 13,878-document candidate set to 19 documents, which is a
+#: conjunctive AND wearing an optimisation's clothes.  So the requirement is
+#: capped: at least half, but never more than this many terms.  Every query in the
+#: wave-3 efficiency measurements needed 3 or 4 matches, so this cap does not
+#: change any previously reported number.
+ELIMINATION_MAX_MATCHES = 6
