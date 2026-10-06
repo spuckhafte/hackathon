@@ -64,7 +64,6 @@ import pandas as pd
 from nyaya import config
 from nyaya.metadata import (
     PARAMETRIC_FIELDS,
-    ParametricField,
     _as_str_list,
     load_manifest,
     merge_from_record,
