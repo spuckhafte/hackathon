@@ -1,0 +1,1015 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NyayaTrace — treatment-aware precedent search for Indian case law</title>
+<style>
+/* ------------------------------------------------------------------ page */
+@page {
+  size: A4;
+  margin: 16mm 17mm 15mm 17mm;
+}
+@page :first { margin-top: 14mm; }
+
+:root {
+  --ink: #16191d;
+  --dim: #4c545e;
+  --faint: #8a929c;
+  --rule: #d4d9df;
+  --accent: #9a6b1f;
+  --accent-bg: #fdf6e8;
+  --cool: #2b5f86;
+  --cool-bg: #eef4f9;
+  --violet: #5b4a86;
+  --green: #2f6b45;
+  --alarm: #a93b2c;
+  --code-bg: #f4f6f8;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 9.55pt; }
+
+body {
+  margin: 0;
+  font-family: "Source Serif 4", "Charter", Georgia, "Times New Roman", serif;
+  color: var(--ink);
+  line-height: 1.40;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* ------------------------------------------------------------- headings */
+h1 {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 18pt;
+  font-weight: 650;
+  line-height: 1.14;
+  letter-spacing: -0.3pt;
+  margin: 0 0 3mm;
+  text-align: left;
+  hyphens: none;
+}
+h2 {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 11.8pt;
+  font-weight: 650;
+  margin: 5mm 0 1.6mm;
+  padding-bottom: 1.1mm;
+  border-bottom: 0.6pt solid var(--rule);
+  text-align: left;
+  hyphens: none;
+  break-after: avoid;
+}
+h3 {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10pt;
+  font-weight: 650;
+  margin: 2.7mm 0 1mm;
+  text-align: left;
+  hyphens: none;
+  break-after: avoid;
+}
+h2 + h3 { margin-top: 2mm; }
+
+p { margin: 0 0 1.75mm; orphans: 2; widows: 2; }
+p + p { text-indent: 0; }
+
+/* --------------------------------------------------------------- header */
+.masthead {
+  border-bottom: 1.6pt solid var(--ink);
+  padding-bottom: 2.2mm;
+  margin-bottom: 3mm;
+}
+.masthead .meta {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8.6pt;
+  color: var(--dim);
+  letter-spacing: 0.2pt;
+  margin-top: 1.4mm;
+}
+.masthead .authors {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 9.6pt;
+  font-weight: 600;
+  margin-top: 1mm;
+}
+
+/* --------------------------------------------------------------- notice */
+.notice {
+  border: 0.8pt dashed var(--accent);
+  background: var(--accent-bg);
+  padding: 2mm 3mm;
+  font-size: 8.5pt;
+  line-height: 1.34;
+  color: #5d4512;
+  margin: 0 0 3mm;
+  border-radius: 1mm;
+}
+.notice strong { color: #4a3708; }
+
+/* ----------------------------------------------------------- placeholder */
+.ph {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.86em;
+  color: var(--accent);
+  border: 0.6pt dashed var(--accent);
+  background: var(--accent-bg);
+  padding: 0 0.7mm;
+  border-radius: 0.6mm;
+  white-space: nowrap;
+}
+
+code, kbd {
+  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  font-size: 0.87em;
+  background: var(--code-bg);
+  padding: 0 0.6mm;
+  border-radius: 0.5mm;
+}
+pre {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 8.3pt;
+  line-height: 1.45;
+  background: var(--code-bg);
+  border-left: 1.6pt solid var(--rule);
+  padding: 1.6mm 3mm;
+  margin: 1.6mm 0 2.2mm;
+  overflow: hidden;
+  white-space: pre-wrap;
+  text-align: left;
+  break-inside: avoid;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* --------------------------------------------------------------- tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.3pt;
+  line-height: 1.3;
+  margin: 1.6mm 0 2.4mm;
+  break-inside: avoid;
+  text-align: left;
+  hyphens: none;
+}
+caption {
+  caption-side: top;
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: 600;
+  color: var(--dim);
+  text-align: left;
+  padding-bottom: 1.1mm;
+  letter-spacing: 0.2pt;
+}
+th {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8.1pt;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 0.9pt solid var(--ink);
+  padding: 0.9mm 1.6mm 0.9mm 0;
+  vertical-align: bottom;
+}
+td {
+  padding: 0.9mm 1.6mm 0.9mm 0;
+  border-bottom: 0.4pt solid var(--rule);
+  vertical-align: top;
+}
+tbody tr:last-child td { border-bottom: 0.9pt solid var(--ink); }
+table.num td:not(:first-child), table.num th:not(:first-child) { text-align: right; padding-right: 0; }
+td strong, th strong { font-family: "Inter", Arial, sans-serif; font-weight: 600; }
+
+/* --------------------------------------------------------------- lists */
+ol, ul { margin: 1.1mm 0 2mm; padding-left: 5.2mm; }
+li { margin-bottom: 0.7mm; }
+
+/* -------------------------------------------------------------- figures */
+figure {
+  margin: 2.4mm 0 2.8mm;
+  break-inside: avoid;
+}
+figure svg { width: 100%; height: auto; display: block; }
+figure.fig1 svg { width: 95%; margin: 0 auto; }
+figcaption {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8pt;
+  color: var(--dim);
+  margin-top: 1.4mm;
+  line-height: 1.38;
+  text-align: left;
+}
+figcaption b { color: var(--ink); }
+
+/* --------------------------------------------------------------- misc */
+.lead { font-size: 9.9pt; }
+.kicker {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 7.6pt;
+  letter-spacing: 1.1pt;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 1mm;
+}
+.rule { border: none; border-top: 0.6pt solid var(--rule); margin: 4mm 0; }
+.page-break { break-before: page; }
+.avoid { break-inside: avoid; }
+em { font-style: italic; }
+.small { font-size: 8.7pt; color: var(--dim); }
+
+.declaration {
+  border: 0.9pt solid var(--ink);
+  padding: 2.4mm 3mm 1.2mm;
+  margin-top: 2.4mm;
+  break-inside: avoid;
+}
+.declaration h2 { margin-top: 0; border-bottom: none; padding-bottom: 0; }
+.declaration h3 { font-size: 9.6pt; }
+
+.refs { font-size: 8.6pt; line-height: 1.36; }
+.refs li { margin-bottom: 1.1mm; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <h1>NyayaTrace<span style="color:var(--faint);font-weight:400"> — treatment-aware precedent search for Indian case law</span></h1>
+  <div class="meta">CSD358 Information Retrieval &middot; Mid-term Hackathon &middot; Track T6 — vertical search for law</div>
+  <div class="authors">Rakshit &nbsp;·&nbsp; Suvrat &nbsp;·&nbsp; Sumedha</div>
+</header>
+
+<div class="notice">
+  <strong>Placeholder notice.</strong> Every figure typeset like
+  <span class="ph">[LIKE_THIS]</span> is a measured result that is not in yet.
+  They are filled from <code>runs/metrics.json</code>,
+  <code>runs/efficiency.json</code> and
+  <code>data/processed/extract_log.csv</code> before submission. No number in
+  this report is estimated, rounded up from a guess, or carried over from a pilot
+  run; an un-measured value is marked rather than invented, so that it cannot
+  survive a read-through unnoticed.
+</div>
+
+<h2>1&ensp;Problem and track relevance</h2>
+
+<p class="lead">A lawyer looking for precedent is not asking “which document is
+about privacy”. They are asking “which <em>binding</em> judgment, <em>still good
+law</em>, decided the point I am arguing, and how have later benches treated it”.
+A general-purpose retrieval system answers the first question and is silent on
+the second — and the second is the one that decides a case.</p>
+
+<p>Three properties of Indian Supreme Court judgments make this a <em>vertical</em>
+problem rather than a corpus to point an off-the-shelf index at.</p>
+
+<p><strong>The vocabulary is a citation system, not prose.</strong> The same
+provision appears as <em>Section 302 IPC</em>, <em>S. 302 of the Indian Penal
+Code, 1860</em>, and <em>u/s 302</em>. To a standard tokenizer those three strings
+share almost no terms, so one provision is scattered across three postings lists
+and a query for any one of them misses the other two. The problem is live rather
+than historical: the Penal Code was replaced by the Bharatiya Nyaya Sanhita on
+1 July 2024 and the section numbers moved, so a corpus spanning 1950–2025
+contains both numbering systems for the same offence.</p>
+
+<p><strong>A judgment is a structured document.</strong> It has a cause title,
+parties, a bench, the statutes it turns on, an operative order, and a very long
+body of facts, submissions and reasoning. Roughly
+<span class="ph">[BODY_SHARE_PCT]</span> of the tokens we index sit in the body
+zone. A flat bag-of-words model therefore spends almost all of its evidence on
+recital, and the holding — the part a lawyer actually wants — is drowned by it.
+The bench, meanwhile, is not evidence of relevance at all: it is a
+<em>filter</em>, because a five-judge bench binds a three-judge bench.</p>
+
+<p><strong>Citation count and reliability come apart.</strong> A judgment can be
+cited hundreds of times and still be the one case you must not cite, because a
+later and larger bench overruled it. Every earlier citation still points at it,
+and no link-popularity measure ever retracts a vote. Text relevance cannot detect
+this, and neither can plain PageRank; both will rank a dead precedent at the
+top.</p>
+
+<p>NyayaTrace is built around these three. It is squarely Track T6 because every
+component exploits domain structure a general web engine has no access to: zones
+derived from the shape of a judgment, parametric metadata (year, bench size,
+judges, acts, case type) that supports real filters, a citation graph whose edges
+carry a <em>legal</em> relation rather than a hyperlink, and an authority score
+that is a statement about precedential standing rather than about popularity.</p>
+
+<p><strong>Corpus.</strong> We use the AWS Open Data release of Indian Supreme
+Court judgments (CC-BY-4.0). After de-duplicating on the bucket path there are
+<strong>42,371</strong> English judgments spanning <strong>1950–2025</strong>.
+All 42,371 are nodes of the citation graph and the source of parametric facts. We
+index the <em>text</em> of a stratified sample of at most <strong>200 judgments
+per year</strong> (seed 358, so the draw is reproducible), taking years with fewer
+judgments whole. This gives ≈<strong>14,000</strong> indexed documents with equal
+temporal coverage, so the whole history of the Court is searchable rather than
+only the last decade. The sampling rate is a known limitation and we treat it as
+one — see §6.</p>
+
+<h2>2&ensp;How we used IR</h2>
+
+<p>The system is one code path with switchable layers. Figure 1 shows the four
+bands: what runs at build time, what sits on disk, what happens when a query
+arrives, and what the user is finally shown.</p>
+
+<figure class="fig1">
+<svg viewBox="0 0 1120 586" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="NyayaTrace pipeline: build, stores, query, explanation">
+  <defs>
+    <marker id="ah" viewBox="0 0 10 10" refX="9" refY="5" markerWidth="6"
+            markerHeight="6" orient="auto-start-reverse">
+      <path d="M 0 0 L 10 5 L 0 10 z" fill="#8a929c"/>
+    </marker>
+    <style>
+      .bx   { fill:#ffffff; stroke:#aeb6c0; stroke-width:1; }
+      .ttl  { font-family:"Inter",Arial,sans-serif; font-size:14px; font-weight:600; fill:#16191d; }
+      .sub  { font-family:"Inter",Arial,sans-serif; font-size:11px; fill:#616a75; }
+      .band { font-family:"Inter",Arial,sans-serif; font-size:11px; font-weight:600;
+              fill:#8a929c; letter-spacing:1.6px; }
+      .ed   { stroke:#b9c0c9; stroke-width:1.1; fill:none; marker-end:url(#ah); }
+      .ed2  { stroke:#b9c0c9; stroke-width:1.1; fill:none; marker-end:url(#ah);
+              stroke-dasharray:4 3; }
+      .lg   { font-family:"Inter",Arial,sans-serif; font-size:11px; fill:#4c545e; }
+      .nt   { font-family:"Inter",Arial,sans-serif; font-size:10.5px; fill:#8a929c; }
+    </style>
+  </defs>
+
+  <!-- band labels -->
+  <text class="band" x="8" y="42">BUILD</text>
+  <text class="band" x="8" y="172">ON DISK</text>
+  <text class="band" x="8" y="302">PER QUERY</text>
+  <text class="band" x="8" y="432">SHOWN</text>
+
+  <!-- ===================== row 1 : build ===================== -->
+  <g>
+    <rect class="bx" x="110" y="50" width="182" height="58" rx="5"/>
+    <rect x="110" y="50" width="4" height="58" rx="2" fill="#9a6b1f"/>
+    <text class="ttl" x="124" y="74">PDFs + metadata</text>
+    <text class="sub" x="124" y="93">AWS Open Data, 42,371</text>
+
+    <rect class="bx" x="314" y="50" width="182" height="58" rx="5"/>
+    <rect x="314" y="50" width="4" height="58" rx="2" fill="#9a6b1f"/>
+    <text class="ttl" x="328" y="74">ingest → zones</text>
+    <text class="sub" x="328" y="93">6 zones, paragraphs</text>
+
+    <rect class="bx" x="518" y="50" width="182" height="58" rx="5"/>
+    <rect x="518" y="50" width="4" height="58" rx="2" fill="#2f6b45"/>
+    <text class="ttl" x="532" y="74">analyze()</text>
+    <text class="sub" x="532" y="93">canonicalise · stop · stem</text>
+
+    <rect class="bx" x="722" y="50" width="182" height="58" rx="5"/>
+    <rect x="722" y="50" width="4" height="58" rx="2" fill="#9a6b1f"/>
+    <text class="ttl" x="736" y="74">SPIMI → merge</text>
+    <text class="sub" x="736" y="93">blocks of 600, int32</text>
+
+    <rect class="bx" x="926" y="50" width="182" height="58" rx="5"/>
+    <rect x="926" y="50" width="4" height="58" rx="2" fill="#5b4a86"/>
+    <text class="ttl" x="940" y="74">citations</text>
+    <text class="sub" x="940" y="93">resolve → treatment</text>
+  </g>
+
+  <!-- ===================== row 2 : stores ===================== -->
+  <g>
+    <rect class="bx" x="110" y="180" width="182" height="58" rx="5"/>
+    <rect x="110" y="180" width="4" height="58" rx="2" fill="#2f6b45"/>
+    <text class="ttl" x="124" y="204">S1 paragraphs</text>
+    <text class="sub" x="124" y="223">the unit of evidence</text>
+
+    <rect class="bx" x="314" y="180" width="182" height="58" rx="5"/>
+    <rect x="314" y="180" width="4" height="58" rx="2" fill="#5b4a86"/>
+    <text class="ttl" x="328" y="204">S2 parametric</text>
+    <text class="sub" x="328" y="223">year · bench · judge · act</text>
+
+    <rect class="bx" x="518" y="180" width="182" height="58" rx="5"/>
+    <rect x="518" y="180" width="4" height="58" rx="2" fill="#9a6b1f"/>
+    <text class="ttl" x="532" y="204">S3 positional index</text>
+    <text class="sub" x="532" y="223">zoned · tf/zone · skips</text>
+
+    <rect class="bx" x="722" y="180" width="182" height="58" rx="5"/>
+    <rect x="722" y="180" width="4" height="58" rx="2" fill="#5b4a86"/>
+    <text class="ttl" x="736" y="204">S4 authority</text>
+    <text class="sub" x="736" y="223">weighted PageRank → g(d)</text>
+
+    <rect class="bx" x="926" y="180" width="182" height="58" rx="5"/>
+    <rect x="926" y="180" width="4" height="58" rx="2" fill="#5b4a86"/>
+    <text class="ttl" x="940" y="204">S5 tiers</text>
+    <text class="sub" x="940" y="223">champion lists, r = 400</text>
+  </g>
+
+  <!-- ===================== row 3 : query ===================== -->
+  <g>
+    <rect class="bx" x="110" y="310" width="182" height="58" rx="5"/>
+    <rect x="110" y="310" width="4" height="58" rx="2" fill="#2f6b45"/>
+    <text class="ttl" x="124" y="334">query parser</text>
+    <text class="sub" x="124" y="353">AST · filters · root!</text>
+
+    <rect class="bx" x="314" y="310" width="182" height="58" rx="5"/>
+    <rect x="314" y="310" width="4" height="58" rx="2" fill="#5b4a86"/>
+    <text class="ttl" x="328" y="334">df-ordered planner</text>
+    <text class="sub" x="328" y="353">rarest first · skip merges</text>
+
+    <rect class="bx" x="518" y="310" width="182" height="58" rx="5"/>
+    <rect x="518" y="310" width="4" height="58" rx="2" fill="#9a6b1f"/>
+    <text class="ttl" x="532" y="334">proximity</text>
+    <text class="sub" x="532" y="353">/n · /s · /p · phrase</text>
+
+    <rect class="bx" x="722" y="310" width="182" height="58" rx="5"/>
+    <rect x="722" y="310" width="4" height="58" rx="2" fill="#2f6b45"/>
+    <text class="ttl" x="736" y="334">BM25F + zones</text>
+    <text class="sub" x="736" y="353">lnc.ltc baseline behind it</text>
+
+    <rect class="bx" x="926" y="310" width="182" height="58" rx="5"/>
+    <rect x="926" y="310" width="4" height="58" rx="2" fill="#5b4a86"/>
+    <text class="ttl" x="940" y="334">net score + heap</text>
+    <text class="sub" x="940" y="353">α·text̂ + (1−α)·g + β·prox</text>
+  </g>
+
+  <!-- ===================== row 4 : shown ===================== -->
+  <g>
+    <rect class="bx" x="314" y="440" width="182" height="58" rx="5"/>
+    <rect x="314" y="440" width="4" height="58" rx="2" fill="#2f6b45"/>
+    <text class="ttl" x="328" y="464">why this result</text>
+    <text class="sub" x="328" y="483">score decomposition</text>
+
+    <rect class="bx" x="518" y="440" width="182" height="58" rx="5"/>
+    <rect x="518" y="440" width="4" height="58" rx="2" fill="#9a6b1f"/>
+    <text class="ttl" x="532" y="464">snippets + badge</text>
+    <text class="sub" x="532" y="483">treatment evidence</text>
+
+    <rect class="bx" x="722" y="440" width="182" height="58" rx="5"/>
+    <rect x="722" y="440" width="4" height="58" rx="2" fill="#2f6b45"/>
+    <text class="ttl" x="736" y="464">Precedent Brief</text>
+    <text class="sub" x="736" y="483">paragraph BM25 + verifier</text>
+  </g>
+
+  <!-- ===================== edges ===================== -->
+  <!-- row 1 chain -->
+  <path class="ed" d="M 292 79 L 310 79"/>
+  <path class="ed" d="M 496 79 L 514 79"/>
+  <path class="ed" d="M 700 79 L 718 79"/>
+  <path class="ed" d="M 404 108 C 404 130, 1016 128, 1016 50"/>
+
+  <!-- row 1 -> row 2 -->
+  <path class="ed" d="M 812 108 C 812 146, 608 146, 608 180"/>
+  <path class="ed" d="M 580 108 C 580 140, 200 142, 200 180"/>
+  <path class="ed" d="M 380 108 C 380 150, 404 150, 404 180"/>
+  <path class="ed" d="M 1016 108 L 1016 180"/>
+  <path class="ed" d="M 660 238 C 660 262, 1016 262, 1016 238" transform="translate(0,0)"/>
+
+  <!-- row 2 -> row 3 -->
+  <path class="ed" d="M 608 238 C 608 276, 404 276, 404 310"/>
+  <path class="ed" d="M 404 238 L 404 310"/>
+  <path class="ed" d="M 812 238 C 812 280, 1016 280, 1016 310"/>
+  <path class="ed2" d="M 1016 238 C 1016 268, 460 274, 420 310"/>
+
+  <!-- row 3 chain -->
+  <path class="ed" d="M 292 339 L 310 339"/>
+  <path class="ed" d="M 496 339 L 514 339"/>
+  <path class="ed" d="M 700 339 L 718 339"/>
+  <path class="ed" d="M 904 339 L 922 339"/>
+
+  <!-- row 3 -> row 4 -->
+  <path class="ed" d="M 1016 368 C 1016 410, 405 404, 405 440"/>
+  <path class="ed" d="M 1016 368 C 1016 412, 609 406, 609 440"/>
+  <path class="ed" d="M 1016 368 C 1016 414, 813 408, 813 440"/>
+  <path class="ed2" d="M 200 238 C 200 380, 700 400, 760 440"/>
+
+  <!-- legend -->
+  <g transform="translate(110,540)">
+    <rect x="0" y="-9" width="11" height="11" rx="2" fill="#9a6b1f"/>
+    <text class="lg" x="17" y="0">Rakshit</text>
+    <rect x="86" y="-9" width="11" height="11" rx="2" fill="#5b4a86"/>
+    <text class="lg" x="103" y="0">Suvrat</text>
+    <rect x="166" y="-9" width="11" height="11" rx="2" fill="#2f6b45"/>
+    <text class="lg" x="183" y="0">Sumedha</text>
+    <text class="nt" x="276" y="0">solid = data flow &nbsp;·&nbsp; dashed = consulted, not consumed</text>
+  </g>
+</svg>
+<figcaption><b>Figure 1 — the NyayaTrace pipeline.</b> The build row runs once;
+the stores row is what exists on disk (S1–S5 of the team contract); the query row
+is what executes per search; the bottom row is what the user is shown. Colour is
+ownership, which is also how the work was divided (§7). Note that
+<code>analyze()</code> is the only path into the index <em>and</em> the only path
+into a query, which is the invariant the whole system is built on.</figcaption>
+</figure>
+
+<h3>2.1&ensp;Ingest and zoning</h3>
+<p>PDFs and the metadata parquet files are pulled from the bucket, text is
+extracted page by page, and a page yielding fewer than 200 words is treated as a
+scanned image, with the document logged as a drop rather than silently kept.
+Every retained judgment is cut into the six zones of <code>config.ZONES</code> —
+<code>title</code>, <code>parties</code>, <code>bench</code>,
+<code>statutes</code>, <code>order</code>, <code>body</code> — and into numbered
+paragraphs, which are the unit of evidence for snippets, proximity and the
+Precedent Brief. Each attempted document gets a row in
+<code>extract_log.csv</code> with its drop reason, so the corpus is auditable
+rather than merely large.</p>
+
+<h3>2.2&ensp;The analyzer</h3>
+<p><code>analyze(text, zone, para_id)</code> is the single entry point for
+documents <strong>and</strong> queries. That is the one invariant we froze before
+writing anything else: if the two ever diverge, matching breaks silently and no
+test catches it. It case-folds, tokenises, canonicalises statutes (§3.1), drops a
+legal stop list — words like <em>appellant</em>, <em>hon’ble</em>,
+<em>judgment</em> carry no discriminative power when every document contains them
+— and applies a Porter stem with statute tokens exempt, because
+<code>ipc§302</code> is an identifier and stemming an identifier is a bug. Each
+emitted token carries its surface form, its running offset within the zone, its
+sentence id and its paragraph id.</p>
+
+<h3>2.3&ensp;Zoned positional inverted index</h3>
+<p>Built with SPIMI: 600 documents are inverted in memory, flushed to a block on
+disk, and the blocks merged once into a single memory-mapped <code>int32</code>
+array. Nothing holds the whole index in RAM and nothing is a Python dictionary at
+query time. A posting is <code>(doc_id, {zone → tf}, positions)</code> — which
+document, how often in each zone, and exactly where. Every ⌈√df⌉ entries the list
+carries a skip pointer, so a merge between a short list and a long one does not
+read the long one end to end. The index also stores <code>doc_len</code>,
+<code>zone_len</code> per document and the <code>lnc</code> vector norms the
+cosine baseline needs. Sizes: <span class="ph">[VOCAB]</span> distinct terms,
+<span class="ph">[TOKENS]</span> tokens, <span class="ph">[POSTINGS_MB]</span> MB
+of postings, built in <span class="ph">[BUILD_MIN]</span> minutes.</p>
+
+<h3>2.4&ensp;Parametric index</h3>
+<p>A separate store over year, bench size, judge names, acts, case type and
+disposal, exposing <code>select(field, op, value) → sorted doc ids</code>. This is
+what makes <code>bench:&gt;=5</code> and <code>year:&gt;=2000</code> genuine
+constraints rather than keyword matches against the bench zone, and it is why the
+bench zone has weight 0 in ranking: scoring it as well would be double
+counting.</p>
+
+<h3>2.5&ensp;Query language and parser</h3>
+<p>A Westlaw-flavoured syntax the profession already knows: <code>AND OR NOT</code>,
+quoted phrases, <code>/n</code> (within <em>n</em> words), <code>/s</code> (same
+sentence), <code>/p</code> (same paragraph), root expansion <code>bail!</code> by
+dictionary prefix scan, zone restriction <code>title:(privacy)</code>, and filters
+<code>year:&gt;=2000 bench:&gt;=5 judge:chandrachud act:IPC</code>. The parser
+returns an AST of <code>TermNode / PhraseNode / ProxNode / AndNode / OrNode /
+NotNode / FilterNode</code>, plus — for a query with no operators — a plain bag of
+terms that takes the free-text fast path.</p>
+
+<h3>2.6&ensp;Boolean planning and merges</h3>
+<p>The planner never executes a conjunction in the order the user typed it. It
+orders the operands by document frequency and processes the rarest first, because
+an intersection can only shrink: starting small keeps every later merge small.
+Selective parametric filters are folded in first for the same reason. All
+intersections use the skip pointers. Index elimination drops query terms below an
+idf of 0.35, and for a free-text query of four or more terms only documents
+matching at least half of them are scored at all.</p>
+
+<h3>2.7&ensp;Proximity</h3>
+<p>Because every token carries its offset, sentence id and paragraph id,
+<code>/n</code>, <code>/s</code> and <code>/p</code> are <em>one</em> two-pointer
+merge over two position lists with three different comparisons:
+<code>|pos<sub>a</sub> − pos<sub>b</sub>| ≤ k</code>,
+<code>sent<sub>a</sub> == sent<sub>b</sub></code>,
+<code>para<sub>a</sub> == para<sub>b</sub></code>. A quoted phrase is the ordered,
+tightest case of the same walk. The merge is linear in the two lists and never
+materialises a cross-product.</p>
+
+<h3>2.8&ensp;Ranking, as switchable layers</h3>
+<ol>
+<li><strong>lnc.ltc cosine</strong> — the textbook tf-idf baseline: flat document,
+no zones.</li>
+<li><strong>Weighted zone scoring</strong> — a per-zone score combined with
+<code>title 3.0, statutes 2.0, order 1.5, body 1.0, parties 0.5, bench 0</code>.</li>
+<li><strong>BM25F</strong> — the per-zone term frequencies are combined
+<em>before</em> saturation, each with its own length normaliser
+<code>b<sub>z</sub></code>, and the sum is then saturated with
+<code>k₁ = 1.2</code>. Saturating per zone and adding afterwards would let a long
+body out-shout a title, which is the whole reason BM25F exists rather than BM25
+over a concatenated document.</li>
+<li><strong>Proximity contribution</strong> — the tightest window the operators
+found, inverted.</li>
+<li><strong>Net score</strong> —
+<code>net = α·text̂ + (1−α)·g(d) + β·prox</code> with <code>α = 0.80</code>,
+<code>β = 0.05</code>, where <code>text̂</code> is min–max normalised within the
+candidate set and <code>g(d)</code> is the static authority of §3.4.</li>
+</ol>
+<p>Setting <code>α = 1</code> removes authority; swapping the scorer returns the
+cosine baseline. Each of the six evaluated systems is one flag away from its
+neighbour.</p>
+
+<h3>2.9&ensp;Efficiency structures</h3>
+<p>Champion lists hold the top 400 documents per term by a static quality measure,
+and a two-tier index serves the free-text fast path from tier 1, falling back to
+the full postings only when tier 1 cannot fill <em>k</em>. Results are collected
+through a heap rather than a full sort. Measured effect in §5.4.</p>
+
+<h3>2.10&ensp;Explanation</h3>
+<p>Every result carries a <code>ScoreExplanation</code> dataclass: raw and
+normalised text score, per-zone contributions, top terms by idf·tf, proximity
+window, <code>g(d)</code> and its <code>pagerank</code>/<code>bench</code> parts,
+the status penalty, α, β and the net. Because it is a dataclass produced by the
+scorer rather than a string assembled for display, it cannot drift away from what
+was actually computed.</p>
+
+<h2>3&ensp;Beyond IR</h2>
+<p>Five components are not retrieval techniques; they are domain engineering that
+retrieval then exploits.</p>
+
+<h3>3.1&ensp;Statute canonicalisation and the IPC↔BNS crosswalk</h3>
+<p>A grammar over Indian statutory citation forms — not a phrase list —
+recognises <code>Section 302 IPC</code>, <code>S. 302 of the Indian Penal Code,
+1860</code>, <code>u/s 302</code>, <code>sec. 302 I.P.C.</code> and their
+punctuation variants, and rewrites all of them to the single token
+<code>ipc§302</code>. It covers the Constitution, IPC, CrPC, CPC, the Evidence Act
+and the three 2023 replacement codes, and handles sub-sections and clauses. The
+rewrite happens once at build time, so it costs nothing per query. On the query
+side a crosswalk expands <code>ipc§302</code> to also fire <code>bns§103</code>
+and vice versa, because the corpus straddles the 2024 recodification; the
+expansion is a flag, so the S1 ablation can measure what canonicalisation alone is
+worth.</p>
+
+<h3>3.2&ensp;Citation extraction and resolution</h3>
+<p>Judgments cite each other in prose. We extract candidate citations and resolve
+them to node ids in three passes: neutral citation
+(<code>2017 INSC 1136</code>), SCR citation (<code>[2017] 11 S.C.R. 1029</code>),
+and case-name matching requiring a Jaccard overlap of at least 0.6 over normalised
+party-name tokens. Each edge records how it was resolved, so an unresolved or
+name-matched edge can be excluded from an ablation. Result:
+<span class="ph">[EDGES]</span> edges, <span class="ph">[RESOLVED_PCT]</span>
+resolved.</p>
+
+<h3>3.3&ensp;Treatment classification</h3>
+<p>The novel part. For each citation we take the sentence and the surrounding
+paragraph and classify the <em>treatment</em> the citing court applied, with a
+cue-phrase classifier over four classes: <strong>followed</strong> (“we
+respectfully follow”, “we are in agreement with”), <strong>distinguished</strong>
+(“is distinguishable on facts”, “turned on its own facts”),
+<strong>overruled</strong> (“stands overruled”, “no longer good law”, “is hereby
+overruled”) and <strong>mentioned</strong> (everything else). This is a
+legal-reasoning label, not a link type, and it is what makes the authority model
+possible.</p>
+
+<h3>3.4&ensp;Treatment-weighted authority</h3>
+<p>The citation graph is weighted by treatment — <code>followed 1.0, mentioned
+0.6, distinguished 0.3, overruled 0.0</code> — row-normalised, and we run our own
+power iteration (<code>λ = 0.85</code>, 60 iterations, tolerance 1e-10; no graph
+library). An overruling edge therefore transfers no authority at all. The PageRank
+is then combined with bench size, which is the Court’s own hierarchy of
+precedential weight, and multiplied by a status penalty:</p>
+<pre><code>g(d)    = (0.75 · pagerank_norm + 0.25 · bench_norm) × penalty
+penalty = 0.25  if overruled
+          0.70  if frequently distinguished
+          1.00  otherwise</code></pre>
+<p>A case counts as <em>frequently distinguished</em> when at least 34% of its
+in-edges are distinguishing and it has at least three such edges.
+<span class="ph">[N_OVERRULED]</span> judgments in our corpus carry an overruled
+status; each is flagged in the interface with the citing judgment and the
+paragraph that did it.</p>
+
+<h3>3.5&ensp;Precedent Brief — retrieval-augmented generation without vectors</h3>
+<p>An optional feature that drafts a short brief. Paragraph-level BM25 over the
+same positional index selects at most 8 paragraphs from the top 5 documents, never
+more than 2 from one judgment. A language model is then required to attach a
+paragraph id to every sentence it writes. A tf-idf cosine verifier re-tokenises
+each generated sentence through <code>analyze()</code> and scores it against the
+paragraph it claims; below a cosine of 0.20 the sentence is flagged
+<strong>unsupported</strong> in the output rather than deleted, so the reader sees
+the disagreement. There is no embedding model and no vector store anywhere in the
+system: the retrieval <em>is</em> the system we already measured.</p>
+
+<h2>4&ensp;Novelty and creativity</h2>
+
+<p><strong>Treatment-aware authority is the main claim.</strong> Link analysis
+over a citation graph is standard; treating the <em>label on the edge</em> as the
+weight, and separating “how much authority flows” from “is this still good law”,
+is not. The two are deliberately different mechanisms: an overruling edge carries
+weight 0 in the PageRank (it transfers nothing) <em>and</em> triggers a
+multiplicative status penalty on the target (it demotes). A purely spectral method
+cannot express the second, because a node with no outgoing authority is not the
+same thing as a node that must be pushed down the ranking. The visible consequence
+is the one a practitioner cares about: the most-cited judgment on a point can be
+demoted and badged, with the sentence that overruled it shown as evidence.</p>
+
+<p><strong>Statute tokens as first-class index terms.</strong> Collapsing three
+surface forms to <code>ipc§302</code> turns a vocabulary-mismatch problem into an
+exact-match problem, and makes <code>act:IPC</code> and
+<code>statutes:(ipc§302)</code> meaningful. The IPC↔BNS crosswalk makes the index
+robust to a statutory change that happened in the middle of the corpus — a problem
+that simply does not arise in web search.</p>
+
+<p><strong>Explanation as a contract, not a feature.</strong>
+<code>ScoreExplanation</code> is part of the frozen interface in
+<code>nyaya/contracts.py</code>. Every result decomposes into per-zone
+contributions, top terms, proximity, authority and penalty. That is what let three
+people build against each other’s components in parallel, and debug ranking
+disagreements by reading a decomposition instead of guessing.</p>
+
+<p><strong>The ablation ladder is a flag, not six implementations.</strong>
+B0 → S1 → S2 → S2′ → S3 → S4 differ by one constant or one branch each. That is a
+design decision with a cost — the code carries a baseline it will never ship — and
+the payoff is that every row of §5 is attributable to exactly one idea.</p>
+
+<p><strong>Vectorless RAG with a verifier.</strong> The brief reuses the index we
+already built and measured, and is wrapped so the model cannot assert anything the
+corpus does not contain. In a domain where a confidently fabricated citation is a
+professional hazard, flagging unsupported sentences is more useful than hiding
+them.</p>
+
+<h2>5&ensp;Evaluation</h2>
+<p>Everything is measured through one entry point,
+<code>search(query, k, mode)</code>, so the six systems are genuinely
+comparable.</p>
+
+<table class="avoid">
+  <caption>Table 1 — the six systems. Each is one flag from its neighbour.</caption>
+  <thead><tr><th style="width:9%">Mode</th><th>What it is</th></tr></thead>
+  <tbody>
+    <tr><td><strong>B0</strong></td><td>flat lnc.ltc tf-idf, plain tokenizer, no zones, no authority</td></tr>
+    <tr><td><strong>S1</strong></td><td>B0 + statute canonicalisation + legal stop list</td></tr>
+    <tr><td><strong>S2</strong></td><td>S1 + weighted zone scoring</td></tr>
+    <tr><td><strong>S2′</strong></td><td>S1 + BM25F instead of cosine</td></tr>
+    <tr><td><strong>S3</strong></td><td>S2′ + authority from plain (unweighted) PageRank</td></tr>
+    <tr><td><strong>S4</strong></td><td>S3 + treatment-aware <code>g(d)</code> + proximity — the full system</td></tr>
+  </tbody>
+</table>
+
+<h3>5.1&ensp;Judged queries</h3>
+<p><span class="ph">[N_QUERIES]</span> hand-written queries spanning
+constitutional, criminal, service and commercial matters, each with a stated
+information need. Results from all six systems were pooled to depth
+<span class="ph">[POOL_DEPTH]</span>, and <span class="ph">[N_JUDGED]</span>
+judgments were graded 0–3 by a law-reading member of the team who could not see
+which system had retrieved what. The qrels and the query set live in
+<code>eval/queries/</code>.</p>
+
+<table class="num avoid">
+  <caption>Table 2 — retrieval effectiveness over the judged query set.</caption>
+  <thead><tr><th style="width:17%">Metric</th><th>B0</th><th>S1</th><th>S2</th><th>S2′</th><th>S3</th><th>S4</th></tr></thead>
+  <tbody>
+    <tr><td>P@5</td><td><span class="ph">[B0_P5]</span></td><td><span class="ph">[S1_P5]</span></td><td><span class="ph">[S2_P5]</span></td><td><span class="ph">[S2P_P5]</span></td><td><span class="ph">[S3_P5]</span></td><td><span class="ph">[S4_P5]</span></td></tr>
+    <tr><td>P@10</td><td><span class="ph">[B0_P10]</span></td><td><span class="ph">[S1_P10]</span></td><td><span class="ph">[S2_P10]</span></td><td><span class="ph">[S2P_P10]</span></td><td><span class="ph">[S3_P10]</span></td><td><span class="ph">[S4_P10]</span></td></tr>
+    <tr><td>R@20</td><td><span class="ph">[B0_R20]</span></td><td><span class="ph">[S1_R20]</span></td><td><span class="ph">[S2_R20]</span></td><td><span class="ph">[S2P_R20]</span></td><td><span class="ph">[S3_R20]</span></td><td><span class="ph">[S4_R20]</span></td></tr>
+    <tr><td>MAP</td><td><span class="ph">[B0_MAP]</span></td><td><span class="ph">[S1_MAP]</span></td><td><span class="ph">[S2_MAP]</span></td><td><span class="ph">[S2P_MAP]</span></td><td><span class="ph">[S3_MAP]</span></td><td><span class="ph">[S4_MAP]</span></td></tr>
+    <tr><td>nDCG@10</td><td><span class="ph">[B0_NDCG]</span></td><td><span class="ph">[S1_NDCG]</span></td><td><span class="ph">[S2_NDCG]</span></td><td><span class="ph">[S2P_NDCG]</span></td><td><span class="ph">[S3_NDCG]</span></td><td><span class="ph">[S4_NDCG]</span></td></tr>
+  </tbody>
+</table>
+
+<figure>
+<svg viewBox="0 0 1120 300" xmlns="http://www.w3.org/2000/svg" role="img"
+     aria-label="nDCG at 10 by system, awaiting measurement">
+  <defs><style>
+    .ax { stroke:#aeb6c0; stroke-width:1; }
+    .gd { stroke:#e2e6ea; stroke-width:1; }
+    .bl { font-family:"Inter",Arial,sans-serif; font-size:14px; font-weight:600; fill:#16191d; }
+    .bs { font-family:"Inter",Arial,sans-serif; font-size:10.5px; fill:#616a75; }
+    .stamp { font-family:"JetBrains Mono",monospace; font-size:12px; fill:#9a6b1f; }
+  </style></defs>
+
+  <line class="gd" x1="130" y1="60"  x2="1090" y2="60"/>
+  <line class="gd" x1="130" y1="120" x2="1090" y2="120"/>
+  <line class="gd" x1="130" y1="180" x2="1090" y2="180"/>
+  <line class="ax" x1="130" y1="240" x2="1090" y2="240"/>
+  <text class="bs" x="124" y="48" text-anchor="end">nDCG@10</text>
+
+  <g fill="#c9d3dc">
+    <rect x="160" y="159" width="110" height="81"/>
+    <rect x="315" y="140" width="110" height="100"/>
+    <rect x="470" y="121" width="110" height="119"/>
+    <rect x="625" y="102" width="110" height="138"/>
+    <rect x="780" y="83"  width="110" height="157"/>
+  </g>
+  <rect x="935" y="59" width="110" height="181" fill="#e0b875"/>
+
+  <path d="M 270 159 L 315 140 M 425 140 L 470 121 M 580 121 L 625 102 M 735 102 L 780 83 M 890 83 L 935 59"
+        stroke="#aeb6c0" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
+
+  <g text-anchor="middle">
+    <text class="bl" x="215"  y="262">B0</text>
+    <text class="bl" x="370"  y="262">S1</text>
+    <text class="bl" x="525"  y="262">S2</text>
+    <text class="bl" x="680"  y="262">S2′</text>
+    <text class="bl" x="835"  y="262">S3</text>
+    <text class="bl" x="990"  y="262" fill="#9a6b1f">S4</text>
+
+    <text class="bs" x="215" y="150">tf-idf baseline</text>
+    <text class="bs" x="370" y="131">+ canonicalisation</text>
+    <text class="bs" x="525" y="112">+ zone weights</text>
+    <text class="bs" x="680" y="93">+ BM25F</text>
+    <text class="bs" x="835" y="74">+ PageRank</text>
+    <text class="bs" x="990" y="50" fill="#9a6b1f">+ treatment, proximity</text>
+
+  </g>
+
+  <g transform="translate(130,22)">
+    <rect x="0" y="-14" width="330" height="20" rx="3" fill="none" stroke="#9a6b1f"
+          stroke-dasharray="4 3"/>
+    <text class="stamp" x="9" y="1">shape only — awaiting measurement</text>
+  </g>
+</svg>
+<figcaption><b>Figure 2 — the ablation ladder.</b> Bar <em>heights are
+placeholders</em> and carry no information until the harness has run; the figure
+is here to fix the reading, not to assert a result. Each step is annotated with
+the single change that produced it, and the final chart will keep that annotation
+so a step that fails to move is as visible as one that does.</figcaption>
+</figure>
+
+<p><strong>We report the shape of the ladder, including the steps that do not
+move.</strong> An ablation that fails to pay for itself is a result, and a test
+set of this size will not resolve small differences; we will say which gaps we
+consider real and which we do not.</p>
+
+<h3>5.2&ensp;Citation recovery — an automatic track with no human judge</h3>
+<p>Take an indexed judgment, hide every case it actually cites, use its own
+holding paragraphs as the query, and ask how many of the hidden citations come
+back. Over <span class="ph">[CR_N]</span> such queries: R@20
+<span class="ph">[CR_R20]</span>, MRR <span class="ph">[CR_MRR]</span>. The ceiling
+here is not 1.0 and cannot be: a cited precedent is only retrievable if it
+survived the ≤200-per-year sample, so this number measures our ranking
+<em>and</em> our sampling together. We report it with that caveat attached rather
+than quietly excluding unsampled targets.</p>
+
+<h3>5.3&ensp;Operator correctness</h3>
+<p>Every operator family — phrase, <code>/n</code>, <code>/s</code>,
+<code>/p</code>, <code>AND</code>/<code>OR</code>/<code>NOT</code>,
+<code>root!</code>, filters, zone restriction — is checked against a brute-force
+linear scan of the raw text over the same corpus. The two result sets must be
+<em>identical</em>, not merely similar. Over <span class="ph">[OP_N]</span> cases:
+<span class="ph">[OP_AGREE]</span> set agreement. This is pass-or-fail, and is the
+one number in the project that is allowed to be boring.</p>
+
+<h3>5.4&ensp;Efficiency</h3>
+<table class="num avoid">
+  <caption>Table 3 — free-text fast path, median over the query set.</caption>
+  <thead><tr><th>Configuration</th><th style="width:22%">Latency</th></tr></thead>
+  <tbody>
+    <tr><td>score every posting</td><td><span class="ph">[MS_FULL]</span> ms</td></tr>
+    <tr><td>champion lists (r = 400) + tier 1</td><td><span class="ph">[MS_TIER]</span> ms</td></tr>
+    <tr><td><strong>speed-up</strong>, for <span class="ph">[TIER_RECALL_LOSS]</span> of top-10 recall given up</td><td><strong><span class="ph">[SPEEDUP]</span></strong></td></tr>
+  </tbody>
+</table>
+<p>Skip-pointer merges touch <span class="ph">[SKIP_GAIN]</span> fewer postings
+than a linear walk of the same lists. Median end-to-end query latency is
+<span class="ph">[MS_MEDIAN]</span> ms.</p>
+
+<h3>5.5&ensp;Precedent Brief verification</h3>
+<p><span class="ph">[BR_SENT]</span> generated sentences,
+<span class="ph">[BR_CITED_PCT]</span> carrying a paragraph id,
+<span class="ph">[BR_FLAGGED_PCT]</span> flagged unsupported by the cosine verifier
+at threshold 0.20.</p>
+
+<h2>6&ensp;Limitations and next steps</h2>
+
+<p><strong>The sample caps recall, and we do not hide it.</strong> We index
+≈14,000 of 42,371 judgments. A precedent that was not sampled cannot be retrieved,
+which puts a hard ceiling on §5.2 and depresses recall on any query whose best
+answer happens to fall outside the draw. The citation <em>graph</em> covers all
+42,371 nodes, so authority is computed over the full universe even where we lack
+the text — but that also means some high-authority nodes are unsearchable.</p>
+
+<p><strong>The treatment classifier cannot read a denial.</strong> It matches
+surface cues, so “We are <em>unable to hold</em> that the decision in <em>Rajesh
+v. State</em> <em>stands overruled</em>” contains the cue for an overruling inside
+an explicit refusal to overrule, and is mis-labelled. A case that was upheld then
+loses three quarters of its <code>g(d)</code>. On our hand-labelled sample of
+<span class="ph">[TREAT_N]</span> edges the classifier is right
+<span class="ph">[TREAT_ACC]</span> of the time, and
+<span class="ph">[NEG_ERR]</span> of its errors are negated, conditional or
+hypothetical cues of exactly this kind. The fix is a negation and modality
+<em>scope</em> around the cue, not a longer phrase list; until it lands, the flag
+is visible in the interface together with the sentence that caused it, so a user
+can overrule the system.</p>
+
+<p><strong>Name-based citation resolution is the weakest link in the graph.</strong>
+Neutral and SCR citations resolve cleanly; a Jaccard threshold over party names
+does not, and Indian case names repeat heavily (<em>State of Maharashtra v. …</em>
+appears constantly). Every edge records <code>resolved_by</code>, so the damage is
+measurable, but it is real.</p>
+
+<p><strong>Extraction loss.</strong> Older judgments are scans. Pages under 200
+words are treated as images and the document is dropped, which biases the indexed
+corpus towards the typeset era within each year’s quota.</p>
+
+<p><strong>One judge, one assessor pool.</strong> The relevance judgments come
+from one person on the team. They were made blind to system identity, but they
+are not independent, and <span class="ph">[N_QUERIES]</span> queries is a small
+test set. Differences of a few points in §5.1 should not be read as real.</p>
+
+<p><strong>No High Courts, no statutes as documents.</strong> Precedent in
+practice runs through High Court decisions and the bare text of the statutes
+themselves; we index neither.</p>
+
+<table class="avoid">
+  <caption>Table 4 — roadmap.</caption>
+  <thead><tr><th style="width:11%">Horizon</th><th style="width:42%">Work</th><th>Why it is next</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Next</strong></td><td>Negation and modality scope around treatment cues: a small dependency window, so “unable to hold” cancels the match</td><td>The single largest source of wrong labels — and a wrong label is worse than a missing one, because it demotes good law</td></tr>
+    <tr><td><strong>Next</strong></td><td>Per-query confidence intervals and a significance test over the judged set</td><td>Several §5.1 gaps are probably not real; saying so is cheap and honest</td></tr>
+    <tr><td><strong>Then</strong></td><td>Replace the cue classifier with a supervised model over the hand-labelled set, keeping the cues as features</td><td>Turns our test set into training data, with a fresh held-out set</td></tr>
+    <tr><td><strong>Then</strong></td><td>Lift the per-year cap for the years the query set actually touches, then for everything</td><td>Directly raises the §5.2 ceiling</td></tr>
+    <tr><td><strong>After</strong></td><td>Index High Court judgments and bare statutes; add a <em>cited-by</em> browse view over the treatment graph</td><td>The graph is already the right shape for it; this is what makes it a tool rather than a demo</td></tr>
+    <tr><td><strong>After</strong></td><td>Learned ranking over the existing features (zone scores, proximity, <code>g(d)</code>, bench, recency) once the judged set can support it</td><td>Our α and β are hand-set; they should be fit, not chosen</td></tr>
+  </tbody>
+</table>
+
+<h2>7&ensp;Work division</h2>
+<p>Interfaces were frozen at kick-off in <code>nyaya/contracts.py</code>, together
+with the constants in <code>nyaya/config.py</code>, and the three of us built
+against them in parallel. Ownership is file-level: nobody edits a module they do
+not own.</p>
+
+<table class="avoid">
+  <caption>Table 5 — who built what.</caption>
+  <thead><tr><th style="width:11%"></th><th style="width:30%">Rakshit (M1)</th><th style="width:30%">Suvrat (M2)</th><th>Sumedha (M3)</th></tr></thead>
+  <tbody>
+    <tr><td><strong>Corpus</strong></td><td>download, PDF extraction, zoning, paragraph segmentation, extract log</td><td>metadata join, universe and manifest, stratified sample</td><td>—</td></tr>
+    <tr><td><strong>Index</strong></td><td>SPIMI build, zoned positional postings, skip pointers, memory-mapped store (S3)</td><td>parametric index (S2), champion lists and tiers (S5)</td><td>paragraph store (S1), collection statistics</td></tr>
+    <tr><td><strong>Query</strong></td><td>proximity operators <code>/n /s /p</code>, phrase matching</td><td>df-ordered Boolean planner, index elimination, filter folding</td><td>query language, parser, normaliser, root expansion</td></tr>
+    <tr><td><strong>Ranking</strong></td><td>proximity contribution, snippets</td><td>citation graph, treatment-weighted PageRank, <code>g(d)</code>, net score, heap</td><td>lnc.ltc cosine, weighted zone scoring, BM25F, “why this result”</td></tr>
+    <tr><td><strong>Beyond IR</strong></td><td>cue-phrase treatment classifier</td><td>citation extraction and resolution</td><td>statute canonicaliser, IPC↔BNS crosswalk, Precedent Brief and verifier</td></tr>
+    <tr><td><strong>Evaluation</strong></td><td>evaluation harness, metrics (P@k, R@k, MAP, nDCG), relevance judging</td><td>citation-recovery and efficiency tracks</td><td>query-set curation, operator correctness tests</td></tr>
+    <tr><td><strong>Delivery</strong></td><td>video production</td><td>report assembly</td><td>CLI and interface, diagrams and script</td></tr>
+  </tbody>
+</table>
+
+<p>Shared and append-only: <code>config.py</code>, <code>contracts.py</code>,
+<code>utils.py</code>, <code>README.md</code>. Every component has at least one
+readable test in <code>tests/</code>, and every component can print an
+intermediate output on demand — postings, plan, weights, scores — which is both a
+debugging contract and what the demo video shows.</p>
+
+<section class="declaration">
+<h2>AI-use declaration</h2>
+<p>This project was built with AI coding agents. The assignment permits that on
+condition it is declared, so it is declared here specifically.</p>
+
+<h3>What the AI did</h3>
+<p>Most of the implementation code in <code>nyaya/</code>, the tests in
+<code>tests/</code>, the Remotion video project in <code>video/</code>, and the
+first draft of this report were written by <strong>Claude Code
+(Anthropic)</strong> agents working under our direction, in parallel, each
+confined to the files its owner is responsible for.</p>
+
+<h3>What we did</h3>
+<p>We chose the problem and the track. We designed the architecture: the six zones
+and their weights, the mode ladder B0→S4, the treatment-weighted authority model
+and the decision to separate edge weight from status penalty, the net-score
+formula, and the decision to build vectorless RAG with a verifier rather than add
+an embedding store. We wrote and froze the interface contracts in
+<code>nyaya/contracts.py</code> and the constants in <code>nyaya/config.py</code>
+before any implementation began, and the agents were required to build against
+them. We set the corpus policy — the universe/indexed-subset split, the
+≤200-per-year stratified sample, the seed — and accepted its cost to recall. We
+designed the evaluation: which systems to compare, which metrics, pooled judging,
+the two automatic tracks, and the rule that an ablation which does not help gets
+reported anyway. We wrote the relevance judgments ourselves; no model graded its
+own output. We reviewed the generated code, ran it on the real corpus rather than
+on stubs, and are answerable for every claim in this report.</p>
+
+<h3>What the AI did not do</h3>
+<p>It did not choose the architecture, the corpus policy or the evaluation design.
+It did not produce the relevance judgments. It did not produce any number in §5 —
+those come from running the harness, and until they do they are visible
+placeholders.</p>
+
+<h3>Tooling</h3>
+<p>Claude Code (Anthropic) for implementation, tests, the video project and report
+drafting. Standard libraries only for the IR core: NumPy for the postings arrays
+and the power iteration, pandas and PyArrow for the metadata, a PDF text extractor
+for ingest. No search engine, no graph library, no embedding model, no ranking
+library — the index, the merges, the scorers and the PageRank are ours.</p>
+</section>
+
+<h2 class="page-break">References</h2>
+<ol class="refs">
+<li>C. D. Manning, P. Raghavan &amp; H. Schütze. <em>Introduction to Information Retrieval.</em> Cambridge University Press, 2008. — SPIMI, skip pointers, lnc.ltc, zone scoring, champion lists, tiered indexes, index elimination.</li>
+<li>S. Robertson &amp; H. Zaragoza. <em>The Probabilistic Relevance Framework: BM25 and Beyond.</em> Foundations and Trends in Information Retrieval 3(4), 2009. — BM25 and the BM25F field-combination rule.</li>
+<li>L. Page, S. Brin, R. Motwani &amp; T. Winograd. <em>The PageRank Citation Ranking: Bringing Order to the Web.</em> Stanford InfoLab, 1999.</li>
+<li>K. Järvelin &amp; J. Kekäläinen. <em>Cumulated Gain-based Evaluation of IR Techniques.</em> ACM TOIS 20(4), 2002. — nDCG.</li>
+<li>M. F. Porter. <em>An Algorithm for Suffix Stripping.</em> Program 14(3), 1980.</li>
+<li>Indian Supreme Court Judgments. AWS Open Data Registry, CC-BY-4.0.</li>
+<li>The Bharatiya Nyaya Sanhita, 2023 (in force 1 July 2024). — the IPC↔BNS section mapping.</li>
+</ol>
+
+<h2>Appendix A — reproducing the results</h2>
+<pre><code>python -m nyaya.build --download --extract --index     # corpus and S1-S5
+python -m pytest tests -q                              # all component tests
+python -m nyaya.cli --smoke                            # end-to-end smoke test
+python -m nyaya.eval.run --systems B0,S1,S2,S2p,S3,S4 --qrels eval/queries
+python -m nyaya.eval.operators --brute-force
+python -m nyaya.eval.recovery
+python -m nyaya.eval.efficiency</code></pre>
+<p class="small">Outputs land in <code>runs/</code> as CSV, JSON and PNG.
+<code>config.SAMPLE_SEED = 358</code> fixes the corpus draw, so a rebuild
+reproduces the same indexed subset.</p>
+
+<h2>Appendix B — query language reference</h2>
+<table class="avoid">
+  <thead><tr><th style="width:36%">Form</th><th>Meaning</th></tr></thead>
+  <tbody>
+    <tr><td><code>murder bail</code></td><td>free text; fast path through tier 1</td></tr>
+    <tr><td><code>"common intention"</code></td><td>exact phrase</td></tr>
+    <tr><td><code>privacy /5 dignity</code></td><td>within five words</td></tr>
+    <tr><td><code>privacy /s dignity</code></td><td>same sentence</td></tr>
+    <tr><td><code>privacy /p dignity</code></td><td>same paragraph</td></tr>
+    <tr><td><code>bail!</code></td><td>root expansion by dictionary prefix</td></tr>
+    <tr><td><code>title:(privacy)</code></td><td>restrict to one zone</td></tr>
+    <tr><td><code>year:&gt;=2000</code>, <code>bench:&gt;=5</code></td><td>parametric filters</td></tr>
+    <tr><td><code>judge:chandrachud</code>, <code>act:IPC</code>, <code>type:criminal</code></td><td>parametric filters</td></tr>
+    <tr><td><code>X AND Y</code>, <code>X OR Y</code>, <code>X NOT Y</code></td><td>Boolean; <code>NOT</code> is a set difference, never a bare negation</td></tr>
+  </tbody>
+</table>
+
+</body>
+</html>
