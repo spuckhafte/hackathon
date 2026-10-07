@@ -345,7 +345,7 @@ export const TIMELINE: Segment[] = [
     mustShow: [
       'the R@10 column: S3 0.176 best, and G0 0.012 marked "no query signal"',
       'excluded as unretrievable: 45.2%, and DISTINCTIVE leak 0.00%',
-      'documents scored p50 1,030 and the warm p50 column at 4-7 ms',
+      'documents scored p50 1,030 and the warm p50 column at 3.7-7.3 ms',
       'NOTE: the tier block here is the HARNESS path (12/20, 3/10). The shipped',
       'path is 18/20, top-1 20/20, worst case 9/10 - do not narrate the 3/10',
     ],

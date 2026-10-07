@@ -391,7 +391,7 @@ export const SPEED = {
   totalGain: fig('8.99x fewer over the whole 20-query set', true),
 
   /** latency is given as a range, never as a ratio */
-  warmP50: fig('4 - 7 ms warm, across all six systems', true),
+  warmP50: fig('3.7 - 7.3 ms warm, across all six systems', true),
   coldStores: fig('1.2 - 1.5 s to memory-map the stores', true),
   coldFirstQuery: fig('about 1 s for the first query', true),
   latencyCaveat: fig(
@@ -408,7 +408,10 @@ export const SPEED = {
    * builds from `free_terms`, so tier 1 is a union of six.
    */
   tierScored: fig('159,328 -> 17,718 documents scored, 8.99x fewer', true),
-  tierLatency: fig('mean 10.4 -> 4.2 ms', true),
+  tierLatency: fig(
+    'wall-clock gain 3.16x - 4.97x across four runs of unchanged code; one of those runs measured mean 10.4 -> 4.2 ms',
+    true
+  ),
   tierIdentical: fig('top-10 identical 18/20, mean overlap 0.990', true),
   tierTop1: fig('rank 1 unchanged 20 of 20', true),
   tierFellThrough: fig('fell through to tier 2 on 0 of 20', true),
