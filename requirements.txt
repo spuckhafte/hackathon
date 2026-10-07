@@ -11,3 +11,7 @@ tqdm>=4.66             # progress bars for the long build
 networkx>=3.2          # PageRank cross-check ONLY; our own power iteration is used
 streamlit>=1.30        # optional single-page UI (not graded)
 pytest>=7.4            # tests (dev)
+
+# report build only (not needed to run or evaluate the search engine)
+markdown>=3.5          # report.md -> report.html
+playwright>=1.40       # HTML -> PDF; also needs: python -m playwright install chromium
