@@ -49,7 +49,7 @@ nothing in the code is OS-specific, but the build fans out over
 git clone <this repo>
 cd hackathon
 python -m venv .venv
-.venv/Scripts/activate          # Linux / macOS: source .venv/bin/activate
+source .venv/Scripts/activate   # Linux / macOS: source .venv/bin/activate
 pip install -r requirements.txt
 ```
 
@@ -412,9 +412,9 @@ is worse than no command at all:
 - **Latency is machine- and cache-dependent, so we do not quote a speed-up
   ratio.** Three runs of identical code gave monotonically falling wall clock as
   the OS page cache warmed. We have seen warm p50 between **3.7 and 7.3 ms** and
-  the two-tier wall-clock gain between **3.2× and 5.0×** on unchanged code, which
-  is why the report leads with *documents scored* — an exact count — rather than
-  with milliseconds. The algorithmic columns are identical every time.
+  the two-tier wall-clock gain between **3.16× and 4.97×** on unchanged code,
+  which is why the report leads with *documents scored* — an exact count — rather
+  than with milliseconds. The algorithmic columns are identical every time.
 
 **The df-ordering result**, as one example of what these commands print.
 `python -m nyaya.query.planner --compare-suite` replays eight AND chains under
