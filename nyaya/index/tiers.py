@@ -323,6 +323,45 @@ def tiered_candidates(terms: Sequence[str], tiers: TieredIndex, index,
     return tier2, trace
 
 
+def free_text_candidates(terms: Sequence[str], ctx: Any,
+                         k: int = config.TOP_K,
+                         restrict: Optional[np.ndarray] = None
+                         ) -> Tuple[np.ndarray, Optional[TierTrace]]:
+    """Drop-in replacement for ``search._free_text_candidates`` that uses S5.
+
+    Written for M3: this is the whole integration.  In ``nyaya/search.py``::
+
+        from nyaya.index.tiers import free_text_candidates
+        cands, tier_trace = free_text_candidates(terms, ctx, k)
+
+    and set ``ctx.tiers = TieredIndex.load()`` once in ``load_context`` (wrapped
+    in ``try/except FileNotFoundError``, since S5 is optional).
+
+    If ``ctx.tiers`` is ``None`` — S5 not built, or deliberately off for the
+    exhaustive ablation arm — this falls back to the full postings union and
+    returns ``None`` for the trace, so behaviour is byte-identical to the current
+    code.  That makes tiering a flag rather than a fork, which is what the
+    efficiency table needs: both arms have to come out of the same function.
+    """
+    index = getattr(ctx, "index", None)
+    tiers = getattr(ctx, "tiers", None)
+    if tiers is None or index is None:
+        parts = []
+        for t in terms:
+            p = index.postings(t) if index is not None else None
+            if p is not None:
+                parts.append(np.asarray(p.doc_ids, dtype=np.int32))
+        if not parts:
+            return np.empty(0, dtype=np.int32), None
+        out = (parts[0] if len(parts) == 1
+               else np.unique(np.concatenate(parts)).astype(np.int32))
+        if restrict is not None:
+            out = np.intersect1d(out, np.asarray(restrict, dtype=np.int32)
+                                 ).astype(np.int32)
+        return out, None
+    return tiered_candidates(terms, tiers, index, k, restrict=restrict)
+
+
 # ==========================================================================
 # 3. Evaluation: the speed-up and the fidelity cost
 # ==========================================================================

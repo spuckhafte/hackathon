@@ -310,3 +310,63 @@ def test_champion_ordering_uses_the_same_alpha_as_the_net_score():
 
     src = inspect.getsource(champion_order)
     assert "config.ALPHA" in src
+
+
+# --------------------------------------------------------------------------
+# free_text_candidates — the drop-in for search.py (M3's integration point)
+# --------------------------------------------------------------------------
+def test_free_text_candidates_uses_s5_when_present(tiers):
+    from nyaya.index.tiers import free_text_candidates
+
+    class Ctx:
+        index = _index()
+        tiers = None
+
+    c = Ctx()
+    c.tiers = tiers
+    cands, trace = free_text_candidates(["common", "mid"], c, k=3)
+    assert trace is not None
+    assert trace.tier == 1
+    assert cands.size >= 3
+
+
+def test_free_text_candidates_falls_back_identically_without_s5():
+    """ctx.tiers=None must give byte-identical behaviour to the current code."""
+    from nyaya.index.tiers import free_text_candidates
+
+    class Ctx:
+        index = _index()
+        tiers = None
+
+    cands, trace = free_text_candidates(["common", "mid"], Ctx(), k=3)
+    assert trace is None
+    expected = np.unique(np.concatenate([
+        Ctx.index.postings("common").doc_ids,
+        Ctx.index.postings("mid").doc_ids])).astype(np.int32)
+    assert cands.tolist() == expected.tolist()
+
+
+def test_free_text_candidates_with_no_known_terms():
+    from nyaya.index.tiers import free_text_candidates
+
+    class Ctx:
+        index = _index()
+        tiers = None
+
+    cands, trace = free_text_candidates(["zzz"], Ctx(), k=3)
+    assert cands.size == 0 and trace is None
+
+
+def test_free_text_candidates_honours_a_restriction(tiers):
+    from nyaya.index.tiers import free_text_candidates
+
+    class Ctx:
+        index = _index()
+        tiers = None
+
+    c = Ctx()
+    c.tiers = tiers
+    restrict = np.array([0, 1, 2], dtype=np.int32)
+    cands, _trace = free_text_candidates(["common", "mid"], c, k=2,
+                                         restrict=restrict)
+    assert set(cands.tolist()) <= {0, 1, 2}
