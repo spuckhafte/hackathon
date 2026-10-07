@@ -53,19 +53,29 @@ MIN_WORDS_PER_DOC = 400
 ZONES = ("title", "parties", "bench", "statutes", "order", "body")
 ZONE_ID = {z: i for i, z in enumerate(ZONES)}
 
-#: Starting zone weights for weighted-zone scoring and BM25F.  Tuned by grid
-#: search on the five held-out queries; see runs/tuning.json for the final set.
+#: Zone weights for weighted-zone scoring and BM25F.  `title` was fitted by the
+#: sweep below; `statutes` and `order` were NOT taken from the coordinate-ascent
+#: optimum, and runs/tuning.json records why: that optimum (statutes 0.0,
+#: order 1.0) gains +0.0090 nDCG@10 on the five dev queries and LOSES 0.0200 on
+#: the twenty test queries, which is what overfitting five queries looks like.
+#: The search range, the trail and both splits are in runs/tuning.json; the
+#: command is `python -m nyaya.rank.tune --report-test`.
 ZONE_WEIGHTS = {
     # `title` was 3.0 (the guide's default).  Lowered to 0.5 by Sumedha on
     # measured evidence, not taste: in this corpus a Supreme Court cause title
-    # is a *party name* ("X versus Y"), not a subject line, so a query term
-    # almost never appears in one - 1 of the 126 candidates for "right to
-    # privacy of personal data" had a title hit.  The weighted-zone scorer then
-    # amplifies that single hit enormously, because a per-zone cosine over a
-    # 9-token title is huge; S2's nDCG@10 falls monotonically as the title
-    # weight rises, on BOTH splits (dev 0.4209 -> 0.3597, test 0.6727 -> 0.6263
-    # for title 0 -> 3).  BM25F is insensitive to it (identical nDCG across the
-    # sweep), so the change costs the shipped S4 nothing and fixes S2.
+    # is a *party name* ("X versus Y"), not a subject line, so a topical query
+    # term essentially never appears in one.  Measured on the built index:
+    # `arbitr` has df 883 and **0** documents with a title-zone hit, so
+    # `title:(arbitration)` returns zero documents while plain `arbitration`
+    # returns ten; same for `privaci` (df 126, 0 title hits) and `detent`
+    # (df 765, 0).  What a title match does find is parties - `state` hits 4,946
+    # titles and `union` 1,450 - so a high title weight rewards party-name
+    # matches rather than topical ones.  The weighted-zone scorer also amplifies
+    # the few real hits enormously, because a per-zone cosine over a 9-token
+    # title is huge; S2's nDCG@10 falls monotonically as the title weight rises,
+    # on BOTH splits (dev 0.4209 -> 0.3597, test 0.6727 -> 0.6263 for title
+    # 0 -> 3).  BM25F is insensitive to it (identical nDCG across the sweep), so
+    # the change costs the shipped S4 nothing and fixes S2.
     # Scoring-only: no index rebuild is needed.  Sweep in runs/tuning.json.
     "title": 0.5,
     "parties": 0.5,
