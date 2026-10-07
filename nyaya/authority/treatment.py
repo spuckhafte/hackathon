@@ -417,6 +417,8 @@ def forward_disposition(window: str, cite_end: int
         abs_at = cite_end + m.start()
         if _is_negated(window, abs_at):
             continue
+        # In this path the cue is by construction *after* the citation, so the
+        # direction test the nearest-cue path needs is already satisfied here.
         if label in _ACTOR_SENSITIVE:
             if _VERB_WITH_OBJECT.match(tail[m.end():m.end() + 24]):
                 continue
@@ -482,8 +484,9 @@ def classify(sentence: str, cite_string: str = "",
                             break
                     if ordinary:
                         continue
-                    if label in _ACTOR_SENSITIVE and _VERB_WITH_OBJECT.match(
-                            sent[m.end():m.end() + 24]):
+                    if (label in _ACTOR_SENSITIVE and cite_at < abs_at
+                            and _VERB_WITH_OBJECT.match(
+                                sent[m.end():m.end() + 24])):
                         rejected.append(f"{phrase} + a case name (cited case is "
                                         f"the actor)")
                         continue
