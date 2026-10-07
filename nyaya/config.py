@@ -56,7 +56,18 @@ ZONE_ID = {z: i for i, z in enumerate(ZONES)}
 #: Starting zone weights for weighted-zone scoring and BM25F.  Tuned by grid
 #: search on the five held-out queries; see runs/tuning.json for the final set.
 ZONE_WEIGHTS = {
-    "title": 3.0,
+    # `title` was 3.0 (the guide's default).  Lowered to 0.5 by Sumedha on
+    # measured evidence, not taste: in this corpus a Supreme Court cause title
+    # is a *party name* ("X versus Y"), not a subject line, so a query term
+    # almost never appears in one - 1 of the 126 candidates for "right to
+    # privacy of personal data" had a title hit.  The weighted-zone scorer then
+    # amplifies that single hit enormously, because a per-zone cosine over a
+    # 9-token title is huge; S2's nDCG@10 falls monotonically as the title
+    # weight rises, on BOTH splits (dev 0.4209 -> 0.3597, test 0.6727 -> 0.6263
+    # for title 0 -> 3).  BM25F is insensitive to it (identical nDCG across the
+    # sweep), so the change costs the shipped S4 nothing and fixes S2.
+    # Scoring-only: no index rebuild is needed.  Sweep in runs/tuning.json.
+    "title": 0.5,
     "parties": 0.5,
     "bench": 0.0,       # filter-only zone, never scored
     "statutes": 2.0,

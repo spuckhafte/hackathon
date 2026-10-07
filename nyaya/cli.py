@@ -466,6 +466,24 @@ def cmd_treatment_audit(args) -> int:
 
 
 # ==========================================================================
+# --brief
+# ==========================================================================
+
+
+def cmd_brief(args) -> int:
+    from nyaya.brief import build, render
+
+    b = build(args.query, k=config.BRIEF_TOP_DOCS, mode=args.mode)
+    if args.json:
+        print(json.dumps(b.as_json(), indent=1, default=str))
+        return 0
+    print()
+    print(render(b))
+    print()
+    return 0 if b.text else 1
+
+
+# ==========================================================================
 # --smoke
 # ==========================================================================
 
@@ -528,6 +546,7 @@ def build_parser() -> argparse.ArgumentParser:
   python -m nyaya.cli --parse 'bail! AND act:IPC year:>=2010'
   python -m nyaya.cli --postings privacy --limit 12
   python -m nyaya.cli --merge 'privacy /p "fundamental right"' --trace
+  python -m nyaya.cli --brief "dying declaration as the sole basis of conviction"
   python -m nyaya.cli --smoke
 """)
     ap.add_argument("query", nargs="*", help="the query to run")
@@ -555,6 +574,8 @@ def build_parser() -> argparse.ArgumentParser:
                     help="citation-treatment classifier errors vs gold labels")
     ap.add_argument("--only-errors", action="store_true",
                     help="with --treatment-audit: only the misclassifications")
+    ap.add_argument("--brief", action="store_true",
+                    help="Precedent Brief: evidence pack, summary, grounding check")
     ap.add_argument("--smoke", action="store_true",
                     help="run every mode over every query shape")
     ap.add_argument("--snippets", action="store_true",
@@ -571,6 +592,10 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     args.query = " ".join(args.query).strip()
 
     try:
+        if args.brief:
+            if not args.query:
+                ap.error("--brief needs a query")
+            return cmd_brief(args)
         if args.smoke:
             return cmd_smoke(args)
         if args.analyze:

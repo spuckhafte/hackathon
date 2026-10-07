@@ -182,13 +182,17 @@ def test_the_bench_zone_is_never_scored():
 
 def test_uniform_and_weighted_differ_and_that_is_the_s1_s2_ablation(stub):
     ctx = Ctx(stub)
-    ids = np.array([0, 1], dtype=np.int32)
+    ids = np.array([0, 1], dtype=np.int32)      # doc 0 title hit, doc 1 body hit
     flat = zonescore.uniform(ids, ["alpha"], ctx)
     tuned = zonescore.score(ids, ["alpha"], ctx)
     assert not np.allclose(flat, tuned)
-    # with the tuned weights the title hit beats the body hit by more than it
-    # does with flat weights, because title weight is 3 and body is 1
-    assert tuned[0] / tuned[1] > flat[0] / flat[1]
+    # The weighted set now *de-emphasises* a title hit relative to a body hit,
+    # which is the measured correction: a cause title in this corpus is a party
+    # name, so a title match is weak evidence about subject matter.  The test
+    # asserts the ratio follows config rather than hard-coding a direction.
+    ratio = (config.ZONE_WEIGHTS["title"] / config.ZONE_WEIGHTS["body"])
+    assert (tuned[0] / tuned[1] > flat[0] / flat[1]) == (ratio > 1.0)
+    assert config.ZONE_WEIGHTS["title"] < config.ZONE_WEIGHTS["body"],         "the measured title weight should sit below the body weight"
 
 
 def test_pivoted_normalisation_damps_the_short_zone_bonus():
