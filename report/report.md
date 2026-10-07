@@ -166,6 +166,21 @@ for an identical answer. The margin is small on this query because the proximity
 node is already the rarest operand; the ordering exists for the queries where it
 is not.
 
+**So we measured those queries too, and the whole experiment is one command:**
+`python -m nyaya.query.planner --compare-suite` replays eight AND chains under
+three operand orders — df-ordered (shipped), filters-first, and exactly as the
+user typed it — and counts the postings entries each one compares. Over the
+eight: **145,921 → 69,527 entries compared, a 2.10× reduction**, and
+**identical answers under all three policies on all eight queries** — this is a
+lossless reordering, not an approximation. Best case **327×**:
+`tax AND sale AND interstate AND trade` compares **29** entries df-ordered
+against **9,490** as written, because `interstate` is rare enough to collapse
+the chain on the first merge. Worst case **1.00×**, on
+`bail AND anticipatory AND discretion`, which happens to be written cheapest-first
+already. The 2.10× is computed on the *totals*, not as a mean of per-query ratios,
+so the 327× outlier cannot carry it. That is the lectures' "process operands in
+order of increasing document frequency" measured on the real index.
+
 ### 2.7 Proximity
 
 Because every token carries its offset, sentence id and paragraph id, `/n`, `/s`
@@ -301,15 +316,15 @@ penalty = 0.25  if overruled
 ```
 
 A case counts as *frequently distinguished* when at least 34% of its in-edges are
-distinguishing and it has at least three such edges. **93** judgments in our corpus carry an
-overruled status and 96 are frequently distinguished; each is flagged in the
+distinguishing and it has at least three such edges. **91** judgments in our corpus carry an
+overruled status and 86 are frequently distinguished; each is flagged in the
 interface with the citing judgment and the paragraph that did it. An overruled
 judgment loses about three quarters of its `g(d)`: *Pune Municipal Corporation*
 (2014), cited 73 times with 17 of those citations saying overruled and itself
 overruled by *Indore Development Authority* (2020), falls from 0.377 to 0.087.
 *T. Devadasan* (1964), 3 overruling citations of 61, falls from 0.460 to 0.115.
 
-One caveat is printed beside that list rather than suppressed. **67 of the 93**
+One caveat is printed beside that list rather than suppressed. **67 of the 91**
 rest on a *single* overruling citation, and one edge against a hundred that say
 "followed" is more likely a classifier error than overruled law. Those rows are
 marked `(!)` rather than filtered, because a share threshold would also discard
@@ -390,27 +405,35 @@ six systems were pooled to depth 20, and **373** judgments were graded 0–3 by 
 law-reading member of the team who could not see which system had retrieved what.
 The qrels and the query set live in `eval/queries/`.
 
+**Two cutoffs, one metric, so the cutoff is in the name.** Average precision is
+averaged over the whole ranking a harness submits, so its cutoff is that
+harness's run depth. This table retrieves 20 and reports **MAP@20**; the tuner
+(§2.10) and the ablation table (§5.6) score at *k* = 10 and report **MAP@10**.
+Both call the same `average_precision` in `nyaya.eval.metrics`, and AP@10 ≤
+AP@20 by construction because recall is capped at ten results — so the two
+figures are one metric at two depths, not a contradiction.
+
 | Metric | B0 | S1 | S2 | S2′ | S3 | S4 |
 |--------|----|----|----|-----|----|----|
 | P@5 | 0.790 | 0.860 | 0.900 | 0.960 | **0.970** | **0.970** |
 | P@10 | 0.745 | 0.855 | 0.850 | 0.910 | **0.920** | **0.920** |
 | R@20 | 0.625 | 0.690 | 0.645 | 0.767 | **0.774** | 0.771 |
-| MAP | 0.537 | 0.597 | 0.581 | 0.707 | **0.723** | 0.721 |
+| MAP@20 | 0.537 | 0.597 | 0.581 | 0.707 | **0.723** | 0.721 |
 | nDCG@10 | 0.610 | 0.642 | 0.671 | 0.798 | **0.883** | 0.879 |
 
 **[FIGURE 2 — nDCG@10 ladder, B0 → S4, each step annotated with the single change
 that produced it]**
 
 **We report the shape of the ladder, including the steps that do not move.**
-BM25F is the largest single win (S2 → S2′, +0.127 nDCG@10, +0.126 MAP, from one
+BM25F is the largest single win (S2 → S2′, +0.127 nDCG@10, +0.126 MAP@20, from one
 change of scorer) and authority is the second (S2′ → S3, +0.085, on a metric that
 rewards putting the right judgment *first*). **Zone weighting alone goes backwards
-on recall**: S1 → S2 raises nDCG@10 but drops R@20 from 0.690 to 0.645 and MAP
-from 0.597 to 0.581, and we keep the row rather than quietly dropping the system
+on recall**: S1 → S2 raises nDCG@10 but drops R@20 from 0.690 to 0.645 and
+MAP@20 from 0.597 to 0.581, and we keep the row rather than quietly dropping the system
 that caused it.
 
 **S4 does not beat S3 here and we do not claim it does.** The gap is 0.005
-nDCG@10 and 0.002 MAP in S3's favour — noise at 20 queries. The honest reading is
+nDCG@10 and 0.002 MAP@20 in S3's favour — noise at 20 queries. The honest reading is
 that what treatment-aware authority buys is *not recommending law that has been
 overruled*, and no precision- or recall-at-k measure over a relevance pool can
 see that, because a dead precedent is still topically relevant and will still be
@@ -420,7 +443,7 @@ not in this table.
 **The end-to-end gap is significant, and we tested it rather than asserting it.**
 S4 over B0 on nDCG@10 is +0.2686 (0.879 against 0.610): **17 queries improve, 0
 tie, 3 get worse**, sign test *p* = **0.0026**, 10,000-iteration bootstrap 95% CI
-on the mean difference **[+0.1623, +0.3781]**, excluding zero. MAP agrees (15/0/5,
+on the mean difference **[+0.1623, +0.3781]**, excluding zero. MAP@20 agrees (15/0/5,
 *p* = 0.0414) and P@10 too (10/8/2, *p* = 0.0386). At 20 queries a few points of
 mean difference would not be evidence on its own; this is what makes the headline
 gap a result rather than a hope, and why we decline to read the 0.005 gap.
@@ -510,6 +533,8 @@ Latency is reported as a range rather than a ratio: **4–7 ms warm p50 across a
 six systems**, with a cold start of 1.2–1.5 s to memory-map the stores and about
 1 s for the first query. Two exact structures sit underneath: df-ordered Boolean
 planning, and a heap for the top *k* instead of a full sort. Both are lossless.
+The first is measured in §2.6 — over eight AND chains **145,921 → 69,527**
+postings entries compared, **2.10× less work for identical answers**.
 **Index elimination** removes 16.5% of the documents scored (132,206 → 110,396)
 for top-10 identical on 16 of 20 queries and a mean overlap of 0.985.
 
@@ -523,7 +548,7 @@ fidelity is printed beside its gain.** On the shipped path, S4, 20 queries:
 | rank 1 unchanged | **20 / 20** |
 | fell through to tier 2 | 0 / 20 |
 | worst case | **9 / 10**, twice in twenty (*unlawful activities prevention*) |
-| cost on the judged set | **zero** — nDCG@10, MAP and P@10 identical to four decimals with tiers on and off, in all three authority modes |
+| cost on the judged set | **zero** — nDCG@10, MAP@20 and P@10 identical to four decimals with tiers on and off, in all three authority modes |
 
 Our offline harness reports the same optimisation as 12/20 identical with a 3/10
 worst case. The difference is a real path difference, not noise: the harness
@@ -566,7 +591,7 @@ One flag off at a time, 20 test queries, mode S4. This is the clearest evidence
 in the project that the *vertical* work, rather than the generic IR machinery, is
 what earns the result.
 
-| Arm | What is off | nDCG@10 | Δ | MAP | P@10 | Vocabulary |
+| Arm | What is off | nDCG@10 | Δ | MAP@10 | P@10 | Vocabulary |
 |---|---|---|---|---|---|---|
 | **full** | — the shipped analyser | **0.8786** | — | 0.5473 | 0.933 | 544,787 |
 | nostem | Porter stemming, both sides | 0.8669 | −0.0117 | 0.5137 | 0.873 | 618,852 |
@@ -731,7 +756,7 @@ is file-level: nobody edits a module they do not own.
 the extract log; the SPIMI build, zoned positional postings, skip pointers and
 the memory-mapped S3 store; proximity operators `/n` `/s` `/p` and phrase
 matching; the proximity contribution and snippets; the cue-phrase treatment
-classifier; the evaluation harness and its metrics (P@k, R@k, MAP, nDCG) and the
+classifier; the evaluation harness and its metrics (P@k, R@k, MAP@k, nDCG@k) and the
 relevance judging; video production.
 
 **Suvrat (M2)** — the metadata join, universe and manifest, and the stratified
@@ -812,7 +837,17 @@ into `runs/`. Set `PYTHONIOENCODING=utf-8` first, or the statute tokens print as
 boxes.
 
 ```bash
-python -m nyaya.build --download --extract --index   # corpus and S1-S5
+# the build, in order (see README.md for timings)
+python -m nyaya.metadata all                         # universe + manifest
+python -m nyaya.ingest download                      # 7.7 GB of judgment PDFs
+python -m nyaya.ingest build                          # extract + zone -> judgments.jsonl
+python -m nyaya.index.positional build --both         # S3 and B0's index
+python -m nyaya.index.paragraphs --build              # S1
+python -m nyaya.index.parametric build                # S2
+python -m nyaya.authority.citations build             # S4 edges
+python -m nyaya.authority.treatment label             # label those edges
+python -m nyaya.authority.pagerank build --weighting treatment
+python -m nyaya.index.tiers build                     # S5
 python -m pytest tests -q                            # all component tests
 python -m nyaya.cli --smoke                          # end-to-end smoke test
 
@@ -822,14 +857,21 @@ python -m nyaya.cli --treatment-audit --only-errors  # §3.3, §6
 python -m nyaya.authority.pagerank compare           # §3.4    the g(d) that moved
 python -m nyaya.rank.tune --report-test              # §2.10   tuning.json
 python -m nyaya.eval.run                             # §5.1    trackA.json
-python -m nyaya.eval.citation_recovery run           # §5.2    citation_recovery.json
+python -m nyaya.eval.citation_recovery run --n 198   # §5.2    citation_recovery.json
 python -m nyaya.eval.citation_recovery report
 python -m nyaya.eval.operators --brute-force         # §5.3    operators.json
 python -m nyaya.eval.efficiency run                  # §5.4    efficiency.json
 python -m nyaya.eval.efficiency report
 python -m nyaya.cli --brief "<query>"                # §5.5
 python -m nyaya.rank.ablate --run                    # §5.6    ablations.json
+python -m nyaya.query.planner --compare-suite        # §2.6    df-ordering, 8 chains
 ```
+
+`--n 198` on the Track B line is not decoration: `run` reuses
+`runs/citation_recovery_queries.json` when it holds at least *n* queries and
+re-samples otherwise, and the figures in §5.2 are the first 198 of that saved
+set. Ask for 200 and you get a slightly different sample and R@10 within
+0.002 of the table — correct, but not the same run.
 
 `config.SAMPLE_SEED = 358` fixes the corpus draw, so a rebuild reproduces the same
 indexed subset — though not byte for byte: see the determinism note in §6. The
