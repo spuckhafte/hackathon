@@ -166,7 +166,7 @@ def test_aggregate_is_a_macro_average_and_skips_nan():
     agg = M.aggregate([a, b])
     assert agg["n_queries"] == 2
     assert agg["P@5"] == pytest.approx((0.2 + 0.0) / 2)
-    assert agg["MAP"] == pytest.approx(1.0)          # q2's NaN is skipped
+    assert agg[M.MAP_NAME] == pytest.approx(1.0)     # q2's NaN is skipped
 
 
 def test_sign_test_on_a_clear_win():
@@ -222,7 +222,10 @@ def test_per_query_comparison_counts_wins_ties_and_losses():
 
 
 def test_metric_names_are_the_ones_the_report_quotes():
-    assert M.METRIC_NAMES == ("P@5", "P@10", "R@20", "MAP", "nDCG@10")
+    # MAP carries its cutoff: AP is averaged over the full run, whose depth is
+    # eval/run.RETRIEVE_K = 20.  tune.py scores at k=10 and says MAP@10.
+    assert M.METRIC_NAMES == ("P@5", "P@10", "R@20", "MAP@20", "nDCG@10")
+    assert M.MAP_NAME == "MAP@20" and M.AP_CUTOFF == 20
     assert M.P_CUTOFFS == (5, 10)
     assert M.R_CUTOFF == 20 and M.NDCG_CUTOFF == 10
 

@@ -40,7 +40,17 @@ P_CUTOFFS = (5, 10)
 R_CUTOFF = 20
 NDCG_CUTOFF = 10
 
-METRIC_NAMES = ("P@5", "P@10", "R@20", "MAP", "nDCG@10")
+#: AP is averaged over the whole ranking a harness submits, so its cutoff is
+#: that harness's run depth — here ``eval/run.RETRIEVE_K`` = 20.  The cutoff is
+#: carried in the metric's *name* because it is the only difference between this
+#: figure and the one `nyaya.rank.tune` reports, which scores at k=10: AP@10 is
+#: necessarily lower than AP@20 because recall is capped at ten results.  Two
+#: numbers printed as plain "MAP" look like a contradiction; they are not.
+AP_CUTOFF = 20
+MAP_NAME = f"MAP@{AP_CUTOFF}"
+
+METRIC_NAMES = ("P@5", "P@10", f"R@{R_CUTOFF}", MAP_NAME,
+                f"nDCG@{NDCG_CUTOFF}")
 
 
 # ==========================================================================
@@ -196,7 +206,9 @@ def score_query(qid: str, system: str, ranked: Sequence[int],
     for k in P_CUTOFFS:
         out.metrics[f"P@{k}"] = precision_at_k(ranked, rels, k)
     out.metrics[f"R@{R_CUTOFF}"] = recall_at_k(ranked, rels, R_CUTOFF)
-    out.metrics["MAP"] = average_precision(ranked, rels)
+    # AP over the full submitted ranking; MAP_NAME carries the cutoff (the
+    # run depth) so this never reads as the same metric as tune.py's AP@10.
+    out.metrics[MAP_NAME] = average_precision(ranked, rels)
     out.metrics[f"nDCG@{NDCG_CUTOFF}"] = ndcg_at_k(ranked, rels, NDCG_CUTOFF)
     out.metrics["RR"] = reciprocal_rank(ranked, rels)
     return out

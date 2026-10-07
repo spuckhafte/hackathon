@@ -58,7 +58,10 @@ REPORT_JSON = config.RUNS / "trackA.json"
 
 #: How deep to retrieve.  20 because R@20 is one of the reported metrics; the
 #: precision cutoffs are 5 and 10 and nDCG is at 10, so one run serves all five.
+#: It is also the AP cutoff — AP is averaged over the whole submitted ranking —
+#: which is why this harness reports MAP@20 and `nyaya.rank.tune` reports MAP@10.
 RETRIEVE_K = 20
+assert RETRIEVE_K == M.AP_CUTOFF, "metrics.MAP_NAME would mislabel the cutoff"
 
 DEFAULT_SYSTEMS = list(MODES)
 
@@ -271,7 +274,7 @@ def write_outputs(rows: Sequence[RunRow],
     comps: List[Dict[str, Any]] = []
     for a, b in comparisons:
         if a in scores and b in scores:
-            for metric in ("nDCG@10", "MAP", "P@10"):
+            for metric in ("nDCG@10", M.MAP_NAME, "P@10"):
                 comps.append(M.per_query_comparison(scores[a], scores[b],
                                                     metric=metric))
 
