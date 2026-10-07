@@ -121,7 +121,7 @@ Sizes: **544,787** distinct terms (68.6% appearing in exactly one document),
 **687.3 MB** of `postings.bin`, built by SPIMI in **604 s**. The S3 store is
 717.9 MB, every store together 1.9 GB, an index-to-text ratio of 1.29. Cold, the
 stores take 1.2–1.5 s to memory-map and the first query about 1 s; warm queries
-are 4–7 ms (§5.4).
+are 3.7–7.3 ms (§5.4).
 
 The collection obeys the usual laws, which checks the tokenizer rather than
 proving anything: Heaps `|V| = 3.33 · T^0.653` (R² = 0.9957), Zipf `s = 0.9825`
@@ -529,8 +529,8 @@ quote one. What the optimisation does is exact and reproducible:
 | documents scored, p50 | 8,032 | 1,030 | 7.8× fewer |
 | documents scored, whole set | 159,328 | 17,718 | **8.99× fewer** |
 
-Latency is reported as a range rather than a ratio: **4–7 ms warm p50 across all
-six systems**, with a cold start of 1.2–1.5 s to memory-map the stores and about
+Latency is reported as a range rather than a ratio: **3.7–7.3 ms warm p50 across
+all six systems**, with a cold start of 1.2–1.5 s to memory-map the stores and about
 1 s for the first query. Two exact structures sit underneath: df-ordered Boolean
 planning, and a heap for the top *k* instead of a full sort. Both are lossless.
 The first is measured in §2.6 — over eight AND chains **145,921 → 69,527**
@@ -556,8 +556,11 @@ builds candidates from `scoring_terms`, so *appellate jurisdiction of the suprem
 court* collapses to the single term `suprem` and tier 1 is that one term's 400
 champions, whereas `search()` builds from `free_terms` and tier 1 is a union of
 six. We report the shipped numbers *and* name the harness arm rather than quietly
-keeping the better of the two. Across three runs the tier wall-clock gain ranged
-**3.2×–4.2×**, which is why we lead with the document count.
+keeping the better of the two. Across four runs the tier wall-clock gain ranged
+**3.16×–4.97×** — and that spread is itself the argument, because four
+measurements of an unchanged optimisation cannot honestly be summarised by one
+figure to three significant figures. So we lead with the document count, where
+159,328 → 17,718 (**8.99× fewer**) comes out the same every time.
 
 ### 5.5 Precedent Brief verification
 

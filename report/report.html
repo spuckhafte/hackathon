@@ -507,7 +507,7 @@ the <code>lnc</code> vector norms the cosine baseline needs.</p>
 <strong>687.3 MB</strong> of <code>postings.bin</code>, built by SPIMI in <strong>604 s</strong>. The S3 store is
 717.9 MB, every store together 1.9 GB, an index-to-text ratio of 1.29. Cold, the
 stores take 1.2–1.5 s to memory-map and the first query about 1 s; warm queries
-are 4–7 ms (§5.4).</p>
+are 3.7–7.3 ms (§5.4).</p>
 <p>The collection obeys the usual laws, which checks the tokenizer rather than
 proving anything: Heaps <code>|V| = 3.33 · T^0.653</code> (R² = 0.9957), Zipf <code>s = 0.9825</code>
 (R² = 0.9930) over ranks 10–1,000. Document frequency spans four orders of
@@ -1062,8 +1062,8 @@ quote one. What the optimisation does is exact and reproducible:</p>
 </tr>
 </tbody>
 </table>
-<p>Latency is reported as a range rather than a ratio: <strong>4–7 ms warm p50 across all
-six systems</strong>, with a cold start of 1.2–1.5 s to memory-map the stores and about
+<p>Latency is reported as a range rather than a ratio: <strong>3.7–7.3 ms warm p50 across
+all six systems</strong>, with a cold start of 1.2–1.5 s to memory-map the stores and about
 1 s for the first query. Two exact structures sit underneath: df-ordered Boolean
 planning, and a heap for the top <em>k</em> instead of a full sort. Both are lossless.
 The first is measured in §2.6 — over eight AND chains <strong>145,921 → 69,527</strong>
@@ -1112,8 +1112,11 @@ builds candidates from <code>scoring_terms</code>, so <em>appellate jurisdiction
 court</em> collapses to the single term <code>suprem</code> and tier 1 is that one term's 400
 champions, whereas <code>search()</code> builds from <code>free_terms</code> and tier 1 is a union of
 six. We report the shipped numbers <em>and</em> name the harness arm rather than quietly
-keeping the better of the two. Across three runs the tier wall-clock gain ranged
-<strong>3.2×–4.2×</strong>, which is why we lead with the document count.</p>
+keeping the better of the two. Across four runs the tier wall-clock gain ranged
+<strong>3.16×–4.97×</strong> — and that spread is itself the argument, because four
+measurements of an unchanged optimisation cannot honestly be summarised by one
+figure to three significant figures. So we lead with the document count, where
+159,328 → 17,718 (<strong>8.99× fewer</strong>) comes out the same every time.</p>
 <h3>5.5 Precedent Brief verification</h3>
 <p><strong>The Precedent Brief ships extractive, and the output says so on every brief.</strong>
 No LLM API key was available in this environment — <code>ANTHROPIC_API_KEY</code> and
