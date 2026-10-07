@@ -605,6 +605,25 @@ def compare_weightings(uniform: Optional[Path] = None,
     title = dict(zip(universe["node_id"], universe["title"]))
     year = dict(zip(universe["node_id"], universe["year"]))
 
+    # How many in-edges actually say "overruled", so the report can show the
+    # strength of the evidence behind each status rather than just the verdict.
+    # This matters: a judgment flagged on ONE edge out of 181 is far more likely a
+    # classifier error than overruled law, and 71% of the flagged judgments rest
+    # on exactly one edge.  A share threshold cannot separate the two, because
+    # genuinely overruled cases also often have one explicit overruling (Sankari
+    # Prasad 1/73, Sabhajit Tewary 1/14), so the honest move is to publish the
+    # evidence count next to the verdict instead of silently filtering.
+    overruled_edges: Counter = Counter()
+    in_edges: Counter = Counter()
+    try:
+        from nyaya.authority.citations import load_edges
+        for e in load_edges(resolved_only=True):
+            in_edges[int(e.dst)] += 1
+            if (e.treatment or "").strip().lower() == "overruled":
+                overruled_edges[int(e.dst)] += 1
+    except FileNotFoundError:
+        pass
+
     changed: List[Dict[str, Any]] = []
     status_counts: Counter = Counter()
     for node, a4 in s4.items():
@@ -624,6 +643,9 @@ def compare_weightings(uniform: Optional[Path] = None,
             "delta": round(a4.g - a3.g, 4),
             "penalty": a4.penalty,
             "in_degree": a4.in_degree,
+            "overruled_edges": int(overruled_edges.get(node, 0)),
+            "cited_by": int(in_edges.get(node, 0)),
+            "single_edge_evidence": bool(overruled_edges.get(node, 0) == 1),
             "pagerank_s3": a3.pagerank,
             "pagerank_s4": a4.pagerank,
         })
@@ -635,6 +657,10 @@ def compare_weightings(uniform: Optional[Path] = None,
         "biggest_drops": changed[:top],
         "mean_drop": (sum(r["delta"] for r in changed) / len(changed)
                       if changed else 0.0),
+        "overruled_on_one_edge": sum(
+            1 for r in changed
+            if r["status"] == "overruled" and r["single_edge_evidence"]),
+        "overruled_total": sum(1 for r in changed if r["status"] == "overruled"),
     }
 
 
@@ -654,12 +680,22 @@ def print_comparison(c: Dict[str, Any]) -> None:
         p("=" * 78)
         return
     p("")
-    p(f"  {'year':>4}  {'in':>4}  {'status':<14}{'g S3':>7}{'g S4':>7}"
-      f"{'delta':>8}  title")
+    p(f"  {'year':>4}  {'cited':>6}{'ovr':>5}  {'status':<14}{'g S3':>7}"
+      f"{'g S4':>7}{'delta':>8}  title")
     for r in c["biggest_drops"]:
-        p(f"  {r['year']:>4}  {r['in_degree']:>4}  {r['status']:<14}"
+        flag = " (!)" if r.get("single_edge_evidence") else "    "
+        p(f"  {r['year']:>4}  {r.get('cited_by', 0):>6}"
+          f"{r.get('overruled_edges', 0):>5}{flag} {r['status']:<10}"
           f"{r['g_s3']:>7.3f}{r['g_s4']:>7.3f}{r['delta']:>+8.3f}  "
-          f"{r['title'][:40]}")
+          f"{r['title'][:34]}")
+    p("")
+    p(f"  (!) = flagged on a SINGLE overruling citation: "
+      f"{c.get('overruled_on_one_edge', 0)} of {c.get('overruled_total', 0)} "
+      f"overruled judgments.")
+    p("      One edge against a hundred that say 'followed' is more likely a")
+    p("      classifier error than overruled law, so those rows are marked rather")
+    p("      than filtered - a share threshold would also discard the genuine")
+    p("      single-overruling cases (Sankari Prasad 1/73, Sabhajit Tewary 1/14).")
     p("=" * 78)
 
 
