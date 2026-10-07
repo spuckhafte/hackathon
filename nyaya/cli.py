@@ -204,8 +204,94 @@ def cmd_plan(args, trace: bool = False) -> int:
                     "filters_applied", "terms_dropped_by_idf"):
             if key in s and s[key] not in (0, [], None):
                 print(f"  {key:<26}{s[key]}")
+    if trace:
+        _trace_merge(q, docs, ctx)
     print()
     return 0
+
+
+def _trace_merge(q, docs, ctx) -> int:
+    """The actual positions the merge compared, in the first surviving document.
+
+    `--trace` is meant to show the *pointer steps*, and these are them: the
+    postings positions of each side, the pairs that satisfied the constraint and
+    the smallest gap found.  Everything here is read back out of the index, not
+    reconstructed.
+    """
+    import numpy as np
+
+    from nyaya.contracts import PhraseNode, ProxNode
+    from nyaya.query import proximity
+    from nyaya.query.parser import _leaf_terms
+
+    ids = np.asarray(docs)
+    if ids.size == 0:
+        print("\n  nothing survived the merge, so there is no pointer walk to show")
+        return 0
+    node = _first_positional(q.root)
+    if node is None:
+        print("\n  this query has no phrase or proximity node, so the merge is "
+              "a plain sorted-array intersection; the counts above are the walk")
+        return 0
+
+    doc_id = int(ids[0])
+    print(f"\npointer walk inside doc {doc_id}")
+    print(DASH)
+    if isinstance(node, ProxNode):
+        left, right = _leaf_terms(node.left), _leaf_terms(node.right)
+        for side, terms in (("left ", left), ("right", right)):
+            pos = _positions(ctx, terms, doc_id)
+            print(f"  {side} {str(terms):<34} positions "
+                  f"{', '.join(str(p) for p in pos[:14])}"
+                  f"{' ...' if len(pos) > 14 else ''}")
+        ex = proximity.explain_proximity(left, right, doc_id, node.kind,
+                                         node.k, ctx)
+        if ex is None:
+            print("  (no pair satisfied the constraint in this document)")
+            return 0
+        kind = {"s": "same sentence", "p": "same paragraph"}.get(
+            ex.kind, f"within {ex.k} words")
+        print(f"\n  constraint      {kind}")
+        print(f"  pairs accepted  {ex.n_pairs}")
+        print(f"  smallest gap    {ex.best_gap} tokens")
+        print(f"  first pairs     " +
+              ", ".join(f"({a}->{b}, gap {abs(b - a)})" for a, b in ex.sample))
+    else:
+        terms = list(node.terms)
+        for t in terms:
+            pos = _positions(ctx, [t], doc_id)
+            print(f"  {t:<22} positions {', '.join(str(p) for p in pos[:14])}"
+                  f"{' ...' if len(pos) > 14 else ''}")
+        hits = proximity.phrase_occurrences(terms, doc_id, ctx)
+        print(f"\n  phrase starts   {', '.join(str(int(h)) for h in hits[:14])}")
+        print(f"  occurrences     {len(hits)}  "
+              f"(a start survives only if every term sits at start + i)")
+    return 0
+
+
+def _first_positional(node):
+    from nyaya.contracts import PhraseNode, ProxNode
+
+    if node is None:
+        return None
+    if isinstance(node, (ProxNode, PhraseNode)):
+        return node
+    for c in node.children():
+        got = _first_positional(c)
+        if got is not None:
+            return got
+    return None
+
+
+def _positions(ctx, terms, doc_id):
+    import numpy as np
+
+    out = []
+    for t in terms:
+        p = ctx.index.postings(t)
+        if p is not None:
+            out.extend(int(x) for x in np.asarray(p.positions_of(doc_id)))
+    return sorted(out)
 
 
 def _print_plan(step, depth: int = 0, trace: bool = False) -> None:
