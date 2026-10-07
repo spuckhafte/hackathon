@@ -560,7 +560,13 @@ def write_authority(authority: Dict[int, Authority], stats: Dict[str, Any],
         "nodes": {str(n): asdict(a) for n, a in authority.items()},
     }
     target.write_text(json.dumps(blob), encoding="utf-8")
-    stats_path(weighting).write_text(json.dumps(stats, indent=2), encoding="utf-8")
+    #: When an explicit `out` is given (tests, scratch builds) the stats blob
+    #: must land beside *that* file.  Writing it to stats_path() regardless
+    #: overwrote the shipped index/pagerank_stats.json with a throwaway stub,
+    #: which is what broke `pagerank top`.
+    sp = (target.with_name(target.stem + "_stats.json") if out
+          else stats_path(weighting))
+    sp.write_text(json.dumps(stats, indent=2), encoding="utf-8")
     return target
 
 
@@ -572,6 +578,34 @@ def load_authority(path: Path = None) -> Dict[int, Authority]:
         )
     blob = json.loads(p.read_text(encoding="utf-8"))
     return {int(k): Authority(**v) for k, v in blob["nodes"].items()}
+
+
+def top_table_from_store(weighting: str = "uniform", n: int = 20,
+                         path: Optional[Path] = None,
+                         universe=None) -> List[Dict[str, Any]]:
+    """Top-*n* judgments by PageRank, read back out of the authority store.
+
+    The same rows as ``_top_table`` builds at build time, but derived from the
+    persisted store rather than from the stats report.  The store is the
+    artefact search actually ranks with, so this cannot drift from it, and
+    `top` keeps working when the stats JSON is stale, truncated or absent.
+    """
+    auth = load_authority(path or authority_path(weighting))
+    uni = load_universe() if universe is None else universe
+    title = dict(zip(uni["node_id"], uni["title"]))
+    year = dict(zip(uni["node_id"], uni["year"]))
+    scr = dict(zip(uni["node_id"], uni["scr_cite"]))
+    order = sorted(auth, key=lambda node: -auth[node].pagerank)[:max(0, n)]
+    out = []
+    for rank, node in enumerate(order, 1):
+        a = auth[node]
+        out.append({
+            "rank": rank, "node_id": int(node), "year": int(year.get(node, 0)),
+            "title": str(title.get(node, "")), "scr_cite": str(scr.get(node, "")),
+            "pagerank": float(a.pagerank), "in_degree": int(a.in_degree),
+            "g": a.g, "bench_norm": a.bench_norm,
+        })
+    return out
 
 
 def compare_weightings(uniform: Optional[Path] = None,
@@ -763,6 +797,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     b.add_argument("--quiet", action="store_true")
     t = sub.add_parser("top")
     t.add_argument("--n", type=int, default=20)
+    t.add_argument("--weighting", choices=list(WEIGHTINGS), default="uniform")
     sub.add_parser("validate")
     st = sub.add_parser("stats")
     st.add_argument("--weighting", choices=list(WEIGHTINGS), default="uniform")
@@ -780,17 +815,22 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print_stats(stats)
     elif args.command == "compare":
         print_comparison(compare_weightings(top=args.top))
-    elif args.command in ("stats", "top"):
+    elif args.command == "top":
+        #: Read from the authority store, not from the stats report: the store
+        #: is what search ranks with, it is always present once `build` has run,
+        #: and --n is no longer capped at the 20 rows the report happened to keep.
+        rows = top_table_from_store(args.weighting, n=args.n)
+        print(f"top {len(rows)} judgments by PageRank  "
+              f"[{authority_path(args.weighting).name}]")
+        print(f"  {'#':>3}  {'year':>4}  {'in':>4}  {'pagerank':>10}  {'g':>5}  title")
+        for r in rows:
+            print(f"  {r['rank']:>3}  {r['year']:>4}  {r['in_degree']:>4}  "
+                  f"{r['pagerank']:>10.3e}  {r['g']:>5.3f}  {r['title'][:70]}")
+    elif args.command == "stats":
         sp = stats_path(getattr(args, "weighting", "uniform"))
         if not sp.exists():
             raise SystemExit(f"no {sp.name} — run `build` first")
-        s = json.loads(sp.read_text(encoding="utf-8"))
-        if args.command == "stats":
-            print_stats(s)
-        else:
-            for r in s["top"][:args.n]:
-                print(f"{r['rank']:>3}  {r['year']}  in={r['in_degree']:>4}  "
-                      f"pr={r['pagerank']:.3e}  g={r['g']:.3f}  {r['title'][:70]}")
+        print_stats(json.loads(sp.read_text(encoding="utf-8")))
     else:
         _, stats = build(validate=True, verbose=False)
         print(f"networkx max |diff| = {stats.get('networkx_max_abs_diff')}")
