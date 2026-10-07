@@ -130,6 +130,58 @@ def test_inheritance_is_switchable_so_it_can_be_measured():
     assert S.extract_statutes(text, inherit_act=False) == ["ipc§302"]
 
 
+def test_the_inheritance_switch_is_switchable_at_run_time():
+    """Regression: the default used to be bound at import, so this did nothing.
+
+    ``inherit_act: bool = INHERIT_ACT_DEFAULT`` evaluates the default when the
+    module is imported, so assigning to `S.INHERIT_ACT_DEFAULT` afterwards changed
+    nothing at all.  The symptom was an ablation arm that reported the shipped
+    numbers exactly, which reads as "the feature does not matter" and really means
+    "the feature was never switched off".
+    """
+    text = ("convicted under Section 302 of the Indian Penal Code, 1860, "
+            "and also under Section 34.")
+    saved = S.INHERIT_ACT_DEFAULT
+    try:
+        S.INHERIT_ACT_DEFAULT = False
+        assert S.inherit_act_default() is False
+        assert S.extract_statutes(text) == ["ipc§302"]
+        assert "ipc§34" not in S.canonicalise_statutes(text)
+        S.INHERIT_ACT_DEFAULT = True
+        assert S.extract_statutes(text) == ["ipc§302", "ipc§34"]
+    finally:
+        S.INHERIT_ACT_DEFAULT = saved
+
+
+def test_the_inheritance_switch_travels_to_a_spawned_worker():
+    """The other half of the bug: the index builder fans out over processes.
+
+    Windows spawns a worker by re-importing the module, so the parent's attribute
+    assignment never reaches it.  The switch therefore travels in the environment
+    and `S.INHERIT_ACT_DEFAULT` is seeded from it at import time.  This runs a
+    real child process, because an in-process test cannot see this class of bug.
+    """
+    import subprocess
+    import sys
+    import os
+
+    code = (
+        "from nyaya import statutes as S;"
+        "toks = S.extract_statutes("
+        "'under Section 302 of the Indian Penal Code, 1860 and Section 34.');"
+        "print('DEFAULT=%s INHERITED=%s' % (S.INHERIT_ACT_DEFAULT, "
+        "any(t.endswith('34') for t in toks)))"
+    )
+    env = dict(os.environ, NYAYA_INHERIT_ACT="0")
+    # The child reports in pure ASCII: a canonical token carries a section sign,
+    # and decoding the child's stdout is not what this test is about.
+    out = subprocess.run([sys.executable, "-c", code], capture_output=True,
+                         text=True, encoding="ascii", errors="replace", env=env)
+    assert out.returncode == 0, out.stderr
+    assert "DEFAULT=False" in out.stdout, out.stdout
+    assert "INHERITED=False" in out.stdout, out.stdout
+
+
 def test_inheritance_does_not_fire_for_an_act_we_do_not_know():
     """The guard that stops "Section 4 of the Dowry Prohibition Act" from
     becoming ipc§4 just because IPC was named earlier."""

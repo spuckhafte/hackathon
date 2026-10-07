@@ -31,13 +31,18 @@ from __future__ import annotations
 
 import argparse
 import json
+import os
 import sys
 from pathlib import Path
 from typing import Any, Dict, List, Optional, Sequence
 
 from nyaya import config
 
-__all__ = ["ARMS", "run_arm", "build_arm"]
+__all__ = ["ARMS", "run_arm", "build_arm", "ENV_INHERIT"]
+
+#: The act-inheritance switch travels to the builder's worker processes in the
+#: environment; see `build_arm` for why nothing else works.
+ENV_INHERIT = "NYAYA_INHERIT_ACT"
 
 #: name -> (index subdirectory, profile kwargs, what it turns off)
 ARMS: Dict[str, Dict[str, Any]] = {
@@ -61,8 +66,33 @@ ARMS: Dict[str, Dict[str, Any]] = {
         "path": "noinherit", "stem_queries": True, "inherit_act": False,
         "profile": dict(canonicalise=True, stem=True, zoned=True,
                         stoplist="legal"),
-        "what": ("canonicalisation on but act inheritance off, so a bare "
-                 "'Section 34' in a judgment stays plain text"),
+        "what": ("act inheritance off in the BODY zone only - see the note "
+                 "below; a bare 'Section 34' there stays plain text"),
+        #: What this arm can and cannot measure, because the honest version of
+        #: the number is worth more than a clean-looking one.
+        #:
+        #: It genuinely withholds inheritance from the zone texts the builder
+        #: analyses: df("section") rises 11,057 -> 11,174 and the index gains
+        #: 2,150 postings, because the bare mentions stay as the two words
+        #: "section" and "34" instead of collapsing into one ipc-34 token.
+        #:
+        #: It cannot withhold them from the **statutes zone**, which
+        #: `positional.analyse_record` synthesises from the record's
+        #: pre-computed `statute_tokens` - written into
+        #: data/processed/judgments.jsonl at *ingest* time, with inheritance
+        #: on.  So every statute token a document ever had still appears in
+        #: that document, its df is unchanged (checked token by token for the
+        #: seven statute tokens the judged queries use: all +0), and only its
+        #: term frequency falls.  A statute query therefore retrieves the same
+        #: documents and the retrieval delta is ~0 by construction.
+        #:
+        #: A true end-to-end inheritance ablation needs a re-ingest with
+        #: NYAYA_INHERIT_ACT=0 so that `statute_tokens` is written without
+        #: inheritance too.  That is hours of PDF work and M1's pipeline, so
+        #: what we report is the index-level number (`nyaya.index.stats`:
+        #: 15.9% of statute mentions are found only by inheritance) plus this
+        #: partial arm, labelled as partial.
+        "partial": True,
     },
 }
 
@@ -78,18 +108,35 @@ def build_arm(name: str, processes: Optional[int] = None) -> Path:
     from nyaya import statutes
 
     out = config.INDEX / arm["path"]
+    inherit = bool(arm.get("inherit_act", True))
+    saved_env = os.environ.get(ENV_INHERIT)
     saved = statutes.INHERIT_ACT_DEFAULT
     try:
         # The builder profile has no inheritance flag, so this arm is built with
-        # the canonicaliser's own default flipped.  `canonicalise_statutes`
-        # reads it live, and the worker processes re-import this module, so the
-        # flip has to survive a spawn - hence the module-level default rather
-        # than a keyword threaded through.
-        statutes.INHERIT_ACT_DEFAULT = bool(arm.get("inherit_act", True))
+        # the canonicaliser's own default flipped.  Two things have to be true
+        # for that flip to reach the documents, and the first version of this
+        # function got the second one wrong, which made the arm a silent no-op
+        # that reported the shipped numbers exactly:
+        #
+        #   1. `canonicalise_statutes` must read the default at CALL time.  It
+        #      used to take `inherit_act: bool = INHERIT_ACT_DEFAULT`, and a
+        #      default argument is bound at import, so assigning to the module
+        #      attribute changed nothing.  Fixed in statutes.py.
+        #   2. The flip must survive a process spawn.  `build` fans out over
+        #      ProcessPoolExecutor and Windows spawns by re-importing, so the
+        #      parent's assignment never reaches a worker.  The environment
+        #      does reach it, so the switch travels as NYAYA_INHERIT_ACT and
+        #      statutes.py seeds its default from there.
+        os.environ[ENV_INHERIT] = "1" if inherit else "0"
+        statutes.INHERIT_ACT_DEFAULT = inherit
         build(IndexProfile(name=name, out=out, **arm["profile"]),
               processes=processes, verbose=True)
     finally:
         statutes.INHERIT_ACT_DEFAULT = saved
+        if saved_env is None:
+            os.environ.pop(ENV_INHERIT, None)
+        else:
+            os.environ[ENV_INHERIT] = saved_env
     return out
 
 
@@ -100,7 +147,6 @@ def run_arm(name: str, queries: Sequence[Dict], qrels: Dict[str, Dict[int, int]]
     from nyaya.query import normalise as N
     from nyaya.rank.tune import evaluate
     from nyaya.search import MODE_SETTINGS, load_context
-    from nyaya.statutes import INHERIT_ACT_DEFAULT
 
     arm = ARMS[name]
     path = config.INDEX / arm["path"] if arm["path"] else config.INDEX
@@ -151,21 +197,21 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:       # pragma: no cover
     rows = [run_arm(a, queries, qrels, mode=args.mode, k=args.k) for a in ARMS]
     base = rows[0]
 
-    print(f"{'arm':<9}{'nDCG@10':>9}{'MAP':>8}{'P@10':>7}"
+    print(f"{'arm':<11}{'nDCG@10':>9}{'MAP':>8}{'P@10':>7}"
           f"{'d nDCG':>9}{'vocab':>10}{'postings':>12}{'on disk':>10}")
-    print("-" * 74)
+    print("-" * 76)
     for r in rows:
         if "error" in r:
-            print(f"{r['arm']:<9}  {r['error']}")
+            print(f"{r['arm']:<11}  {r['error']}")
             continue
         d = r["ndcg"] - base["ndcg"] if r is not base else 0.0
-        print(f"{r['arm']:<9}{r['ndcg']:>9.4f}{r['map']:>8.4f}{r['p10']:>7.3f}"
+        print(f"{r['arm']:<11}{r['ndcg']:>9.4f}{r['map']:>8.4f}{r['p10']:>7.3f}"
               f"{d:>+9.4f}{r['vocabulary']:>10,}{r['postings']:>12,}"
               f"{r['on_disk']:>10}")
     print()
     for r in rows:
         if "what" in r:
-            print(f"  {r['arm']:<9}{r['what']}")
+            print(f"  {r['arm']:<11}{r['what']}")
 
     # the inheritance ablation is a *canonicaliser* switch, not an index one
     print()
@@ -182,10 +228,14 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:       # pragma: no cover
 def _inherit_ablation(queries, qrels, mode: str, k: int) -> str:
     """Act inheritance off, on the query side only.
 
-    The index cannot be re-analysed per arm here without a third build, so what
-    this measures is narrower and is labelled as such: with inheritance off, a
-    *query* like "sec. 302" no longer resolves to ``ipc§302``, while the
-    documents keep the tokens inheritance gave them.
+    Narrower than the index arm and labelled as such: with inheritance off a
+    *query* that names an act once and then a bare section no longer resolves
+    the second mention, while the documents keep every token inheritance gave
+    them.  Note that most short queries never exercise it at all - a one-clause
+    query has no earlier act for a bare section to inherit from, and the
+    query-only fallback `statutes.QUERY_FALLBACK_ACT` is a different mechanism
+    that this switch does not touch.  A +0.0000 here means "the judged queries
+    do not exercise query-side inheritance", not "inheritance is worthless".
     """
     from nyaya import statutes
     from nyaya.rank.tune import evaluate

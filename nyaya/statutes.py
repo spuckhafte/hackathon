@@ -30,6 +30,7 @@ Author: Sumedha (M3)
 """
 from __future__ import annotations
 
+import os
 import re
 import sys
 from dataclasses import dataclass
@@ -333,7 +334,30 @@ def _expand_list(span: str, act: str) -> List[str]:
 # ==========================================================================
 #: Default for the act-inheritance heuristic.  `analyze` exposes it as a flag so
 #: the ablation ("how much does inheritance buy?") is a measurement, not a guess.
-INHERIT_ACT_DEFAULT = True
+#:
+#: Seeded from ``NYAYA_INHERIT_ACT`` because of two traps that between them
+#: turned the first inheritance ablation into a silent no-op:
+#:
+#: 1. A default argument is bound when the module is imported, so
+#:    ``inherit_act: bool = INHERIT_ACT_DEFAULT`` ignored every later
+#:    assignment to this name.  The functions below therefore take
+#:    ``Optional[bool] = None`` and resolve it through `inherit_act_default()`
+#:    at *call* time.
+#: 2. The index builder fans out over `ProcessPoolExecutor`, and Windows spawns
+#:    workers by re-importing this module, so a flip in the parent process
+#:    never reaches them.  An environment variable does, because the child
+#:    inherits the environment and re-reads it on import.
+#:
+#: The symptom of getting this wrong is an ablation arm that reports exactly
+#: the shipped numbers, which reads as "the feature does not matter" and is
+#: really "the feature was never switched off".
+INHERIT_ACT_DEFAULT = os.environ.get("NYAYA_INHERIT_ACT", "1").strip().lower() \
+    not in ("0", "false", "no", "off")
+
+
+def inherit_act_default() -> bool:
+    """The live value of `INHERIT_ACT_DEFAULT`, read at call time."""
+    return bool(INHERIT_ACT_DEFAULT)
 
 #: How far a named act may reach forward to a bare section number, in characters
 #: of the same paragraph.  Measured: without a limit, a bare "section 2" five
@@ -362,7 +386,7 @@ _PARA_SPLIT = re.compile(r"(\n[ \t]*\n+)")
 def canonicalise_statutes(
     text: str,
     *,
-    inherit_act: bool = INHERIT_ACT_DEFAULT,
+    inherit_act: Optional[bool] = None,
     default_act: Optional[str] = None,
 ) -> str:
     """Replace every statute mention span with one canonical token.
@@ -391,13 +415,14 @@ def canonicalise_statutes(
     """
     if not text:
         return text
+    inherit = inherit_act_default() if inherit_act is None else bool(inherit_act)
 
     out_parts: List[str] = []
     for chunk in _PARA_SPLIT.split(text):
         if _PARA_SPLIT.fullmatch(chunk):      # the separator itself
             out_parts.append(chunk)
             continue
-        out_parts.append(_canonicalise_paragraph(chunk, inherit_act, default_act))
+        out_parts.append(_canonicalise_paragraph(chunk, inherit, default_act))
     return "".join(out_parts)
 
 
@@ -422,15 +447,16 @@ class StatuteSpan:
 def iter_statute_spans(
     text: str,
     *,
-    inherit_act: bool = INHERIT_ACT_DEFAULT,
+    inherit_act: Optional[bool] = None,
     default_act: Optional[str] = None,
 ) -> List[StatuteSpan]:
     """Every statute mention in ``text``, with offsets into ``text``."""
+    inherit = inherit_act_default() if inherit_act is None else bool(inherit_act)
     spans: List[StatuteSpan] = []
     offset = 0
     for chunk in _PARA_SPLIT.split(text):
         if not _PARA_SPLIT.fullmatch(chunk):
-            for sp in _paragraph_spans(chunk, inherit_act, default_act):
+            for sp in _paragraph_spans(chunk, inherit, default_act):
                 sp.start += offset
                 sp.end += offset
                 spans.append(sp)
@@ -583,7 +609,8 @@ def _canonicalise_paragraph(
 # ==========================================================================
 
 
-def extract_statutes(text: str, *, inherit_act: bool = INHERIT_ACT_DEFAULT) -> List[str]:
+def extract_statutes(text: str, *,
+                     inherit_act: Optional[bool] = None) -> List[str]:
     """Canonical statute tokens present in ``text``, de-duplicated, in order.
 
     This is what builds the synthetic ``statutes`` zone (config.ZONES) and the
