@@ -414,27 +414,55 @@ def cmd_postings(args) -> int:
 
 
 def cmd_treatment_audit(args) -> int:
+    """Delegate to M1's classifier — this flag owns no logic of its own.
+
+    Tried in order, because the classifier's own CLI is still growing:
+      1. ``nyaya.eval.treatment`` — the gold-label audit, when it lands;
+      2. ``nyaya.authority.treatment audit`` — same, if it grows the subcommand;
+      3. ``nyaya.authority.treatment sample`` — which exists today and prints
+         labelled edges with the evidence sentence behind each label.
+    Option 3 shows the predicted label and the sentence but **not** the gold
+    label, so it says so rather than implying a comparison it has not made.
+    """
     try:
         from nyaya.eval import treatment as audit            # type: ignore
+
+        if hasattr(audit, "main"):
+            argv = ["--only-errors"] if args.only_errors else []
+            return int(audit.main(argv + ["--limit", str(args.limit)]))
     except ImportError:
-        audit = None
-    if audit is not None and hasattr(audit, "main"):
-        argv = []
+        pass
+
+    try:
+        from nyaya.authority import treatment as tre
+    except ImportError:
+        print("\nthe treatment classifier is not built yet", file=sys.stderr)
+        return 2
+
+    # Probe for the subcommand rather than calling and catching argparse's
+    # SystemExit: argparse prints its usage error to stderr on the way out, and
+    # a demo recording should not show a failed command it then recovers from.
+    if hasattr(tre, "_cmd_audit"):
+        argv = ["audit", "--n", str(args.limit)]
         if args.only_errors:
             argv.append("--only-errors")
-        argv += ["--limit", str(args.limit)]
-        return int(audit.main(argv))
+        return int(tre.main(argv))
 
-    print("\nThe treatment classifier audit lives with M1's classifier "
-          "(nyaya/eval/treatment.py) and has not landed yet.", file=sys.stderr)
-    print("The limitation this segment is meant to show is live today through "
-          "the statute canonicaliser instead:\n", file=sys.stderr)
-    print("    python -m nyaya.statutes --measure 160 --sample 40\n",
+    print(f"\n{BAR}\ntreatment classifier — labelled edges with their evidence\n"
+          f"{BAR}")
+    print("The gold-label comparison lives in M1's evaluation harness and is "
+          "not wired here yet, so what follows is the predicted label and the "
+          "sentence it was predicted from, with no gold column.\n",
           file=sys.stderr)
-    print("which prints a hand-checkable precision sample and the recall "
-          "misses, including the OCR and out-of-vocabulary-act cases the "
-          "system genuinely gets wrong.", file=sys.stderr)
-    return 2
+    rc = 0
+    for label in (("distinguished", "overruled") if args.only_errors
+                  else ("followed", "distinguished", "overruled")):
+        try:
+            rc |= int(tre.main(["sample", "--label", label,
+                                "--n", str(args.limit)]))
+        except SystemExit as exc:                            # pragma: no cover
+            rc |= int(exc.code or 0)
+    return rc
 
 
 # ==========================================================================
