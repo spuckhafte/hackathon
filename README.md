@@ -196,7 +196,12 @@ SSD):
 | S1 / S2 / S4 / S5 | minutes each, not tens of minutes; the treatment-labelling pass is **32.5 s** over **76,118** edges and PageRank converges in **21 iterations** (0.06 s of power iteration over 37,210 nodes) |
 
 The build is resumable: `download` skips files already on disk, and every stage
-reads its input from disk rather than from the stage before it.
+reads its input from disk rather than from the stage before it. Step 4 also folds
+the statute tokens it computed back into `judgments.jsonl`, because step 6 reads
+`acts` from there — if that write-back is deferred because another process holds
+the corpus open (Windows), the facts are kept in a sidecar and
+`python -m nyaya.index.positional enrich` folds them in later. Step 4 prints
+which of the two happened.
 
 **The build is not bit-deterministic.** `SAMPLE_SEED = 358` fixes *which*
 judgments are indexed, so a rebuild indexes the same corpus — but two builds from
