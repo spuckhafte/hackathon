@@ -312,7 +312,7 @@ export const TIMELINE: Segment[] = [
     commands: ['python -m nyaya.eval.run'],
     mustShow: [
       'the six per-system timing lines as they print',
-      'the full Track A table: P@5, P@10, R@20, MAP, nDCG@10 for B0 through S4',
+      'the full Track A table: P@5, P@10, R@20, MAP@20, nDCG@10 for B0 through S4',
       'S3 0.8833 and S4 0.8786 side by side - S4 does NOT win here',
       'the sign test 17 improved / 0 tied / 3 worsened, p = 0.0026 SIGNIFICANT',
       'the bootstrap 95% CI [+0.1623, +0.3781], excludes 0',

@@ -414,7 +414,7 @@ export const SPEED = {
   tierFellThrough: fig('fell through to tier 2 on 0 of 20', true),
   tierWorst: fig('9/10, twice in twenty \u2014 worst is "unlawful activities prevention"', true),
   tierJudgedCost: fig(
-    'on the judged set the champion lists cost exactly zero: nDCG@10, MAP and P@10 are '
+    'on the judged set the champion lists cost exactly zero: nDCG@10, MAP@20 and P@10 are '
       + 'identical to four decimals with tiers on and off, in all three authority modes',
     true
   ),

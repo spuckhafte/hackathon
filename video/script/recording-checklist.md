@@ -311,7 +311,7 @@ Runtime: 1.1 s + 0.8 s. Leave ~11 s on each.
 > list. `search()` builds from `free_terms`, so tier 1 is a union of six. On the
 > shipped path it is **18/20 identical, mean overlap 0.990, rank 1 unchanged
 > 20/20, worst case 9/10**, and on the judged set the champion lists cost
-> *exactly zero* — nDCG@10, MAP and P@10 identical to four decimals with tiers on
+> *exactly zero* — nDCG@10, MAP@20 and P@10 identical to four decimals with tiers on
 > and off. If you mention 3/10 at all, say which path it came from.
 >
 > The unretrievable-by-construction share stays on screen beside Track B, and the
