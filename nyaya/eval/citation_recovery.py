@@ -972,8 +972,9 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             save_queries(qs)
         lk = audit_leakage(qs)
         print(f"{len(qs)} queries -> {QUERIES_JSON}")
-        print(f"leak rate: {lk['leak_rate_queries']:.1%} of queries, "
-              f"{lk['leak_rate_pairs']:.1%} of gold pairs")
+        print(f"topical overlap: {lk['topical_overlap_rate_pairs']:.1%} of gold "
+              f"pairs; DISTINCTIVE leak: "
+              f"{lk['distinctive_leak_rate_pairs']:.2%}")
         for q in qs[:3]:
             print(f"\n  doc {q.doc_id} ({q.year}) gold={len(q.gold)}  "
                   f"{q.title[:56]}")

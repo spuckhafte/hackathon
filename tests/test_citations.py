@@ -396,3 +396,54 @@ def test_only_body_and_order_paragraphs_are_scanned(resolver):
     edges, stats = extract_edges(resolver, [rec], {0: 99}, progress_every=0)
     assert stats["citation_occurrences"] == 1
     assert [e.dst for e in edges] == [0]
+
+
+# --------------------------------------------------------------------------
+# Headnote disposition tables must not pool their dispositions
+# --------------------------------------------------------------------------
+_HEADNOTE_TABLE = (
+    "F. NARIMAN, J.\n,[1954] SCR 1077\npartly overruled\nPara 2\n"
+    "[1964] 1 SCR 332\npartly overruled\nPara3\n"
+    "[1970) 3 SCR 530\nrelied on\nPara3\n"
+    "D [1978] 2 SCR 621\nrelied on\nPara3\n"
+)
+
+
+def test_a_disposition_table_window_is_one_row_not_the_whole_table():
+    """Real bug this pins: Puttaswamy's headnote table made Maneka Gandhi, which
+    Puttaswamy *relied on*, come out labelled `overruled` and lose three quarters
+    of its g(d).  The table has no sentence punctuation, so the sentence window
+    was the entire table and every row's disposition was in scope at once.
+    """
+    cite = [c for c in find_citations(_HEADNOTE_TABLE) if c.year == 1978][0]
+    win = sentence_window(_HEADNOTE_TABLE, cite.start)
+    assert "1978] 2 SCR 621" in win
+    assert "relied on" in win
+    assert "overruled" not in win          # the other rows are out of scope
+    assert "1954" not in win and "1964" not in win
+
+
+def test_every_row_of_a_table_gets_its_own_disposition():
+    for year, expected in ((1954, "partly overruled"), (1964, "partly overruled"),
+                           (1970, "relied on"), (1978, "relied on")):
+        cite = [c for c in find_citations(_HEADNOTE_TABLE) if c.year == year][0]
+        win = sentence_window(_HEADNOTE_TABLE, cite.start)
+        assert expected in win, (year, win)
+
+
+def test_ordinary_prose_still_gets_the_following_sentence():
+    """The fix must not shrink the window where the next sentence is the evidence."""
+    text = ("The rule was laid down in [1951] S.C.R. 51. That decision was later "
+            "overruled. A third sentence follows.")
+    cite = find_citations(text)[0]
+    win = sentence_window(text, cite.start)
+    assert "later overruled" in win
+    assert "third sentence" not in win
+
+
+def test_a_short_citation_list_in_prose_is_not_treated_as_a_table():
+    """Two citations in one prose sentence with no newlines is not a table."""
+    text = ("Both [1951] S.C.R. 51 and [1952] 1 S.C.R. 110 were considered and "
+            "distinguished by the Bench.")
+    cite = find_citations(text)[0]
+    assert "distinguished" in sentence_window(text, cite.start)

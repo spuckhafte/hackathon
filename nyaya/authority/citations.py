@@ -98,7 +98,10 @@ _CITE_RE = re.compile(
     (?:
       # ---- Supreme Court Reports: [2017] 11 S.C.R. 1029, [1954] SCR 1077,
       #      [1959] SUPP. 1 S.C.R. 10, 1962 Supp. 3 SCR 1 ------------------
-      \[?\s*(?P<scr_year>(?:1[89]\d\d|20[0-2]\d))\s*\]?\s*
+      # The bracket round the year is [ ] in print but the OCR turns it into
+      # ( ) or mixes the pair, e.g. "[1970) 3 SCR 530" in a real headnote, so
+      # both characters are accepted on both sides.
+      [\[(]?\s*(?P<scr_year>(?:1[89]\d\d|20[0-2]\d))\s*[\])]?\s*
       (?P<scr_supp> supp (?:l(?:ement(?:ary)?)?)? \.? )?\s*
       (?: \(\s*(?P<scr_vol_p>\d{1,2})\s*\) | (?P<scr_vol>\d{1,2}) )?\s*
       S\.?\s*C\.?\s*R\.?\s*
@@ -588,7 +591,53 @@ def sentence_window(text: str, pos: int, n_after: int = 1) -> str:
                               len(spans)) - 1))
     lo = spans[hit][0]
     hi = spans[min(hit + n_after, len(spans) - 1)][1]
-    return text[lo:hi].strip()
+    window = text[lo:hi]
+    if _is_citation_table(window, pos - lo):
+        return _line_window(text, pos, n_after).strip()
+    return window.strip()
+
+
+#: A window holding this many citations *besides* the one being described is not
+#: prose about a precedent — it is a list.
+TABLE_CITATION_COUNT = 2
+
+
+def _is_citation_table(window: str, rel_pos: int) -> bool:
+    """Is this evidence window a headnote disposition table rather than prose?
+
+    A reported judgment's headnote often carries a table of every case it touched::
+
+        [1954] SCR 1077    partly overruled   Para 2
+        [1964] 1 SCR 332   partly overruled   Para 3
+        [1978] 2 SCR 621   relied on          Para 3
+
+    There is no sentence punctuation in it, so ``analyze.sentences`` sees the whole
+    table as one sentence and the evidence window for *any* row contains *every*
+    row's disposition.  M1's classifier then has several contradictory cues in
+    scope, and when OCR damages the right one ("relied on" scanned as "relied
+    Oil") a cue from a different row can win.  That is exactly how Maneka Gandhi
+    — which Puttaswamy *relied on* — came out labelled ``overruled`` and lost
+    three quarters of its g(d).
+
+    So a window that looks like a table is replaced by a line-based one, which
+    keeps each citation's own disposition and nothing else.
+    """
+    others = [m for m in find_citations(window)
+              if not (m.start <= rel_pos < m.end)]
+    return len(others) >= TABLE_CITATION_COUNT and window.count("\n") >= 1
+
+
+def _line_window(text: str, pos: int, n_after: int = 1) -> str:
+    """The newline-delimited line containing ``pos``, plus the next ``n_after``."""
+    start = text.rfind("\n", 0, pos) + 1
+    end = start
+    for _ in range(n_after + 1):
+        nxt = text.find("\n", end)
+        if nxt < 0:
+            end = len(text)
+            break
+        end = nxt + 1
+    return text[start:end]
 
 
 # ==========================================================================
