@@ -172,6 +172,27 @@ def bootstrap_ci(values: Sequence[float], samples: int = BOOTSTRAP_SAMPLES,
 
 MASK = " MASKED "
 
+#: A *looser* case-name pattern than ``citations._NAME_RE``, used only for masking.
+#:
+#: The resolver's pattern requires the name to be followed by punctuation,
+#: because in a citation it always is ("Maneka Gandhi v. Union of India, (1978) 1
+#: SCC 248").  For masking that is the wrong trade: "It follows Maneka Gandhi v.
+#: Union of India in every respect" has no trailing comma and slips through,
+#: leaking a party name straight into the query.  Here, over-masking costs a
+#: little query signal and under-masking silently inflates every score in the
+#: track, so this pattern drops the lookahead and takes capitalised runs on both
+#: sides of the v.
+_MASK_NAME_RE = re.compile(
+    r"""
+    \b(?:[A-Z][\w&.'()\-/]*
+         (?:\s+(?:[A-Z][\w&.'()\-/]*|of|the|and|&)){0,8})
+    \s+(?:v|vs|versus)\.?\s+
+    (?:[A-Z][\w&.'()\-/]*
+       (?:\s+(?:[A-Z][\w&.'()\-/]*|of|the|and|&)){0,8})
+    """,
+    re.VERBOSE,
+)
+
 #: Words that mark the sentence as *about* a precedent rather than about the
 #: facts.  A sentence containing one of these is dropped wholesale, because the
 #: citation masker only removes the citation string and the party names, and the
@@ -179,9 +200,10 @@ MASK = " MASKED "
 #: carry distinctive phrasing from the cited case.
 _CITATION_CUES = re.compile(
     r"(?i)\b(relied\s+(?:up)?on|reliance|cited|citing|referred\s+to|"
-    r"following\s+the\s+decision|in\s+the\s+case\s+of|this\s+court\s+held\s+in|"
+    r"follow(?:s|ed|ing)|in\s+the\s+case\s+of|held\s+in|"
     r"laid\s+down\s+in|reported\s+in|see\s+also|approved\s+in|"
-    r"overrul\w+|distinguish\w+|affirm\w+\s+in)\b"
+    r"ratio\s+in|observed\s+in|precedent|overrul\w+|distinguish\w+|"
+    r"affirm\w+\s+in|per\s+incuriam)\b"
 )
 
 
@@ -192,7 +214,7 @@ def mask_text(text: str) -> Tuple[str, Dict[str, int]]:
     ``X v. Y`` names, then any sentence that still carries a citation cue.
     """
     from nyaya.analyze import sentences
-    from nyaya.authority.citations import _NAME_RE, find_citations
+    from nyaya.authority.citations import find_citations
 
     counts = {"citations": 0, "names": 0, "cue_sentences": 0}
 
@@ -204,7 +226,7 @@ def mask_text(text: str) -> Tuple[str, Dict[str, int]]:
     counts["citations"] = len(spans)
 
     # --- 2. "X v. Y" case names -----------------------------------------
-    name_spans = [(m.start(), m.end()) for m in _NAME_RE.finditer(masked)]
+    name_spans = [(m.start(), m.end()) for m in _MASK_NAME_RE.finditer(masked)]
     for a, b in reversed(name_spans):
         masked = masked[:a] + MASK + masked[b:]
     counts["names"] = len(name_spans)
