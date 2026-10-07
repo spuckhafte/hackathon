@@ -597,9 +597,9 @@ meant anything at all. And the vocabulary column should not be read below about
 **The sample caps recall, and we do not hide it.** We index 13,878 of 37,210
 judgments. A precedent that was not sampled cannot be retrieved, which puts a
 hard ceiling on §5.2 and depresses recall on any query whose best answer happens
-to fall outside the draw. The citation *graph* covers all 42,371 nodes, so
-authority is computed over the full universe even where we lack the text — but
-that also means some high-authority nodes are unsearchable.
+to fall outside the draw. The citation *graph* covers all 37,210 de-duplicated
+nodes, so authority is computed over the full universe even where we lack the
+text — but that also means some high-authority nodes are unsearchable.
 
 **The treatment classifier cannot read a denial.** It matches surface cues, so
 "We are **unable to hold** that the decision in *Rajesh v. State* **stands
