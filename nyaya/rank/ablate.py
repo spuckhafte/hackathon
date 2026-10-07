@@ -162,7 +162,9 @@ def run_arm(name: str, queries: Sequence[Dict], qrels: Dict[str, Dict[int, int]]
         st = ctx.index.stats()
         return {
             "arm": name, "what": arm["what"], "index": str(path),
-            "ndcg": sc.ndcg, "map": sc.map, "p10": sc.p10,
+            # "map@k", not "map": the cutoff is the only reason this differs
+            # from the Track A harness's MAP@20.  AP@10 < AP@20 by construction.
+            "ndcg": sc.ndcg, f"map@{k}": sc.map, "p10": sc.p10, "cutoff_k": k,
             "vocabulary": st["vocabulary"], "postings": st["total_postings"],
             "on_disk": st["on_disk_total"], "seconds": round(sc.seconds, 1),
             "per_query": sc.per_query,
@@ -197,7 +199,9 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:       # pragma: no cover
     rows = [run_arm(a, queries, qrels, mode=args.mode, k=args.k) for a in ARMS]
     base = rows[0]
 
-    print(f"{'arm':<11}{'nDCG@10':>9}{'MAP':>8}{'P@10':>7}"
+    # MAP@k: this harness scores at -k (10 by default), the Track A harness at
+    # its run depth of 20.  Same average_precision(), different rank cutoff.
+    print(f"{'arm':<11}{'nDCG@10':>9}{f'MAP@{args.k}':>8}{'P@10':>7}"
           f"{'d nDCG':>9}{'vocab':>10}{'postings':>12}{'on disk':>10}")
     print("-" * 76)
     for r in rows:
@@ -205,7 +209,8 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:       # pragma: no cover
             print(f"{r['arm']:<11}  {r['error']}")
             continue
         d = r["ndcg"] - base["ndcg"] if r is not base else 0.0
-        print(f"{r['arm']:<11}{r['ndcg']:>9.4f}{r['map']:>8.4f}{r['p10']:>7.3f}"
+        print(f"{r['arm']:<11}{r['ndcg']:>9.4f}{r[f'map@{args.k}']:>8.4f}"
+              f"{r['p10']:>7.3f}"
               f"{d:>+9.4f}{r['vocabulary']:>10,}{r['postings']:>12,}"
               f"{r['on_disk']:>10}")
     print()
@@ -249,9 +254,10 @@ def _inherit_ablation(queries, qrels, mode: str, k: int) -> str:
         off = evaluate(queries, qrels, mode=mode, k=k, ctx=ctx)
     finally:
         statutes.INHERIT_ACT_DEFAULT = saved
+    # MAP@k again: scored at the same cutoff as the arm table above.
     return (f"act inheritance (query side only; the index keeps its tokens)\n"
-            f"  on   nDCG@10 {on.ndcg:.4f}  MAP {on.map:.4f}\n"
-            f"  off  nDCG@10 {off.ndcg:.4f}  MAP {off.map:.4f}  "
+            f"  on   nDCG@10 {on.ndcg:.4f}  MAP@{k} {on.map:.4f}\n"
+            f"  off  nDCG@10 {off.ndcg:.4f}  MAP@{k} {off.map:.4f}  "
             f"({off.ndcg - on.ndcg:+.4f})")
 
 

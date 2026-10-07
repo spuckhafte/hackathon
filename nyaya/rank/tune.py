@@ -146,9 +146,15 @@ class Score:
     p10: float = 0.0
     per_query: Dict[str, float] = field(default_factory=dict)
     seconds: float = 0.0
+    #: The rank cutoff every figure above was computed at.  It is carried so the
+    #: labels can state it: this tuner scores at k=10, so its MAP is MAP@10,
+    #: while the Track A harness retrieves 20 and reports MAP@20.  AP@10 is
+    #: necessarily the lower of the two because recall is capped at ten results.
+    k: int = 10
 
     def __repr__(self) -> str:                               # pragma: no cover
-        return f"nDCG@10={self.ndcg:.4f} MAP={self.map:.4f} P@10={self.p10:.4f}"
+        return (f"nDCG@{self.k}={self.ndcg:.4f} MAP@{self.k}={self.map:.4f} "
+                f"P@{self.k}={self.p10:.4f}")
 
 
 def evaluate(queries: Sequence[Dict], qrels: Dict[str, Dict[int, int]],
@@ -157,7 +163,7 @@ def evaluate(queries: Sequence[Dict], qrels: Dict[str, Dict[int, int]],
     from nyaya.search import search
 
     t0 = time.perf_counter()
-    s = Score()
+    s = Score(k=k)                 # so every label below can name the cutoff
     nd, ap, p10 = [], [], []
     for q in queries:
         rels = qrels.get(q["qid"], {})
@@ -305,9 +311,11 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:       # pragma: no cover
     base = trail[0]
     print(f"\n{'':<10}{'baseline':>10}{'tuned':>10}{'delta':>10}")
     print("-" * 40)
-    print(f"{'nDCG@10':<10}{base['ndcg']:>10.4f}{best.ndcg:>10.4f}"
+    print(f"{f'nDCG@{best.k}':<10}{base['ndcg']:>10.4f}{best.ndcg:>10.4f}"
           f"{best.ndcg - base['ndcg']:>+10.4f}")
-    print(f"{'MAP':<10}{base['map']:>10.4f}{best.map:>10.4f}"
+    # MAP@k, not plain MAP: this tuner scores at k=args.k (10 by default) while
+    # the Track A harness scores at its run depth of 20, and AP@10 < AP@20.
+    print(f"{f'MAP@{best.k}':<10}{base['map']:>10.4f}{best.map:>10.4f}"
           f"{best.map - base['map']:>+10.4f}")
     print(f"\n{n_evals} configurations evaluated by coordinate ascent "
           f"({args.passes} passes max). This is a local optimum, not a global one.")
@@ -317,8 +325,11 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:       # pragma: no cover
     out.write_text(json.dumps({
         "fitted_on": [q["qid"] for q in dev], "mode": args.mode,
         "grid": GRID, "fixed": FIXED, "before": before, "after": best_params,
+        # the cutoff is in the key: these are AP@k, with k = args.k
+        "cutoff_k": best.k,
         "baseline_ndcg": base["ndcg"], "tuned_ndcg": best.ndcg,
-        "baseline_map": base["map"], "tuned_map": best.map,
+        f"baseline_map_at_{best.k}": base["map"],
+        f"tuned_map_at_{best.k}": best.map,
         "evaluations": n_evals, "trail": trail,
         "metrics": "nyaya.eval.metrics" if m else "local stand-in",
     }, indent=1), encoding="utf-8")
@@ -334,7 +345,7 @@ def _main(argv: Optional[Sequence[str]] = None) -> int:       # pragma: no cover
         print(f"\ntest set ({len(test)} queries), scored ONCE, never fitted on")
         print(f"  nDCG@10  {b_test.ndcg:.4f} -> {a_test.ndcg:.4f}  "
               f"({a_test.ndcg - b_test.ndcg:+.4f})")
-        print(f"  MAP      {b_test.map:.4f} -> {a_test.map:.4f}  "
+        print(f"  MAP@{a_test.k:<4} {b_test.map:.4f} -> {a_test.map:.4f}  "
               f"({a_test.map - b_test.map:+.4f})")
     return 0
 
