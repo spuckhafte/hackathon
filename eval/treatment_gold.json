@@ -1,0 +1,67 @@
+{
+ "_about": "Hand-assigned treatment labels for 40 citation edges of index/citations.jsonl, read by scripts/treatment_audit.py. Sampled 10 per predicted label with random.Random(358) from the labelling produced by nyaya/authority/treatment.py. Each label is my reading of the sentence window, assigned before looking at whether the classifier agreed. Annotator: Rakshit (M1).",
+ "_sampled_from": "index/citations.jsonl after `python -m nyaya.authority.treatment label`",
+ "_seed": 358,
+ "labels": {
+  "41433": "overruled",
+  "40411": "overruled",
+  "58870": "overruled",
+  "46699": "overruled",
+  "38917": "overruled",
+  "6867": "overruled",
+  "23066": "overruled",
+  "16556": "overruled",
+  "33581": "overruled",
+  "13324": "overruled",
+
+  "25305": "distinguished",
+  "36950": "distinguished",
+  "53091": "distinguished",
+  "40360": "distinguished",
+  "17404": "distinguished",
+  "49629": "distinguished",
+  "69555": "distinguished",
+  "14882": "distinguished",
+  "9172": "distinguished",
+  "7227": "distinguished",
+
+  "55474": "followed",
+  "23099": "followed",
+  "21390": "followed",
+  "31546": "followed",
+  "53432": "followed",
+  "26935": "followed",
+  "67110": "mentioned",
+  "20484": "followed",
+  "2692": "followed",
+  "13648": "followed",
+
+  "5795": "mentioned",
+  "11233": "mentioned",
+  "60216": "mentioned",
+  "60948": "mentioned",
+  "4035": "mentioned",
+  "17789": "mentioned",
+  "26823": "mentioned",
+  "39157": "mentioned",
+  "29890": "mentioned",
+  "12721": "mentioned"
+ },
+ "_notes": {
+  "33581": "Borderline: the edge's cite_string is 'AIR 1992 SC 165' but the window names 'AIR 1992 SC 196' - an OCR digit transposition in the same citation. The sentence does declare that cited decision per incuriam, so I score it correct; a stricter annotator would score it wrong and the overruled precision would read 9/10.",
+  "67110": "The classifier says 'followed' from an 'affirmed' cue 425 characters away, inside a long sentencing discussion. The cited case is merely referred to, so the truth is 'mentioned'. This is the one error in the 40.",
+  "21390": "Shared list disposition: 'A; B; C ... - relied on' applies to every citation in the list, which is why the followed cue is uncapped by distance.",
+  "13129": "Not in the sample, but kept here as the documented limitation: see scripts/treatment_audit.py --limitation."
+ },
+ "limitation_case": {
+  "edge": 13129,
+  "twin_edge": 13130,
+  "src_doc_id": 6864,
+  "dst": -1,
+  "cite_string": "[1973] 3 SCR 769",
+  "predicted": "mentioned",
+  "truth": "overruled",
+  "why": "Negation scope is approximated by a character window (NEGATION_WINDOW_CHARS = 80) instead of a syntactic parse. Here 'could not be continued by his legal representatives' is part of the proposition the cited case held, not a negation of the following 'overruled'. The window sees 'not' 24 characters before the cue and suppresses a real overruling, so the edge is labelled 'mentioned'.",
+  "video_beat": "show-a-limitation-live: run `python -m nyaya.authority.treatment explain --edge 13129` and read the sentence aloud"
+ }
+}
