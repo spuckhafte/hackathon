@@ -321,7 +321,8 @@ def _resolved_targets() -> Dict[int, Set[int]]:
 
 
 def sample_queries(n: int = 200, seed: int = config.SAMPLE_SEED,
-                   verbose: bool = True) -> List[RecoveryQuery]:
+                   verbose: bool = True,
+                   max_terms: int = MAX_QUERY_TERMS) -> List[RecoveryQuery]:
     """Pick ``n`` judgments and build a masked query for each."""
     from nyaya.metadata import load_manifest
     from nyaya.rank.net import DocNodeMap
@@ -352,7 +353,8 @@ def sample_queries(n: int = 200, seed: int = config.SAMPLE_SEED,
     for rec in _iter_selected(chosen):
         doc_id = int(rec["doc_id"])
         q_date = str(date.get(doc_id) or "")
-        query, counts = build_query(rec.get("paras", ()))
+        query, counts = build_query(rec.get("paras", ()),
+                                    max_terms=max_terms)
         if not query:
             continue
         gold: List[int] = []
@@ -672,8 +674,12 @@ def sweep_query_length(n: int = 60, caps: Sequence[int] = (10, 20, 30, 60),
 
     from nyaya.metadata import load_manifest
 
-    queries = load_queries() if QUERIES_JSON.exists() else sample_queries(n, verbose=verbose)
-    queries = queries[:n]
+    # Generate at the LARGEST cap and trim down.  Reusing the saved queries would
+    # be wrong: they are built with MAX_QUERY_TERMS already applied, so every cap
+    # at or above it would be the same query and the table would show a flat line
+    # exactly where the interesting behaviour is.
+    top_cap = max(caps)
+    queries = sample_queries(n, verbose=verbose, max_terms=top_cap)[:n]
     strip_distinctive_leaks(queries, verbose=False)
 
     man = load_manifest()
