@@ -304,20 +304,25 @@ def tier_fidelity() -> Dict[str, Any]:
         "fell_through": s["fell_through"],
         "worst_query": ({"query": worst["query"], "overlap": worst["overlap"],
                          "reduction": worst["reduction"]} if worst else None),
-        "note": ("S5 is built and measured but is NOT yet wired into "
-                 "search(); nyaya/search.py sets ctx.tiers = None.  See the "
-                 "TODO in this module."),
+        "note": ("S5 is now wired into the live free-text path "
+                 "(search() -> tiers.free_text_candidates), so the by_mode "
+                 "latency table above measures the tiered path end to end.  "
+                 "This fidelity block still comes from "
+                 "nyaya.index.tiers.evaluate, which drives the same net.rank "
+                 "and the same BM25F scorer but bypasses search(), because it "
+                 "needs the exhaustive arm as a reference and search() no "
+                 "longer offers one."),
     }
 
 
-# TODO(M3): `nyaya/search.py` line ~225 sets `ctx.tiers = None` with the comment
-# "S5 champion lists, when M2 lands them".  S5 has landed:
-# `nyaya.index.tiers.TieredIndex.load()` and `tiered_candidates(terms, tiers,
-# index, k, restrict=...)` are ready, and `_free_text_candidates` is the only
-# call site that needs to change.  Until that one line lands, the tier numbers in
-# this report come from `nyaya.index.tiers.evaluate`, which drives the same
-# `net.rank` and the same BM25F scorer but bypasses `search()`.  I have not
-# touched search.py because it is yours.
+# RESOLVED: M3 wired S5 into `search()` (`load_context` now calls
+# `TieredIndex.load()` and `_free_text_candidates` routes through
+# `tiers.free_text_candidates`).  The live-path consequence is measured in the
+# by_mode table: documents scored per query fall 8,032 -> 1,030 at the median and
+# p50 latency falls 1.3x-2.4x depending on the scorer.  The fidelity block below
+# still runs `nyaya.index.tiers.evaluate` rather than `search()`, on purpose: it
+# compares tier-1 against the exhaustive union, and the wired `search()` no
+# longer exposes an exhaustive arm to compare against.
 
 
 # ==========================================================================
@@ -406,8 +411,10 @@ def run(queries: Sequence[str] = None, modes: Sequence[str] = MODES,
             "p50/p95 over the median of 3 repeats per query; latency is "
             "long-tailed, so the mean is not the number to quote.",
             "`scored` is the algorithmic quantity; latency is machine-dependent.",
-            "S5 tier numbers come from nyaya.index.tiers.evaluate because "
-            "search() does not yet consult ctx.tiers (M3's file).",
+            "search() now consults ctx.tiers, so the by_mode table measures "
+            "the tiered path; the S5 fidelity numbers still come from "
+            "nyaya.index.tiers.evaluate because that is the only place an "
+            "exhaustive arm survives to compare tier-1 against.",
         ],
     }
 
