@@ -103,23 +103,31 @@ def normalise_query(text: str) -> str:
     )
 
 
-def terms_of(raw: str, *, stem: bool = True) -> List[str]:
+#: Whole-system switch for the stemming ablation.  The query side MUST match the
+#: index side: running a stemmed query against an unstemmed index is not an
+#: ablation, it is a broken system.  `nyaya.rank.ablate` flips this together
+#: with the index path, and nothing else should touch it.
+STEM_QUERIES = True
+
+
+def terms_of(raw: str, *, stem: Optional[bool] = None) -> List[str]:
     """Normalised terms of one leaf, through `analyze()`.
 
     ``canonicalise=False`` because `normalise_query` already did pass 1 on the
     whole string; running it again would be harmless (it is idempotent) but
     pointless, and the leaf has lost the context that made it work.
     """
+    stem = STEM_QUERIES if stem is None else stem
     return analyze_terms(raw, stem=stem, canonicalise=False)
 
 
-def term_of(raw: str, *, stem: bool = True) -> Optional[str]:
+def term_of(raw: str, *, stem: Optional[bool] = None) -> Optional[str]:
     """The single term a one-word leaf normalises to, or ``None`` if it vanished."""
     t = terms_of(raw, stem=stem)
     return t[0] if t else None
 
 
-def phrase_terms(raw: str, *, stem: bool = True) -> List[str]:
+def phrase_terms(raw: str, *, stem: Optional[bool] = None) -> List[str]:
     """Terms of a quoted phrase, stop words **kept**.
 
     Keeping them is the whole point: the positional index stores every token, so
@@ -134,7 +142,7 @@ def phrase_terms(raw: str, *, stem: bool = True) -> List[str]:
 _ROOT_INFLECTIONS = ("", "e", "es", "ed", "ing", "ion", "ions", "ity", "ies", "y")
 
 
-def prefix_root(raw: str, *, stem: bool = True) -> Optional[str]:
+def prefix_root(raw: str, *, stem: Optional[bool] = None) -> Optional[str]:
     """Root for ``bail!`` — the prefix for a dictionary scan.
 
     The subtlety that makes this more than ``raw.rstrip("!")``: the dictionary
@@ -149,6 +157,7 @@ def prefix_root(raw: str, *, stem: bool = True) -> Optional[str]:
     nonsense input), and take the shortest.  A shorter prefix is broader, and
     breadth is exactly what root expansion is for.
     """
+    stem = STEM_QUERIES if stem is None else stem
     root = term_of(raw.rstrip("!*").strip(), stem=False)
     if not root or not stem:
         return root
@@ -313,6 +322,6 @@ __all__ = [
     "FILTER_FIELDS", "ZONE_FIELDS", "FIELD_ALIASES", "NUMERIC_FIELDS",
     "canonical_field", "is_filter_field", "is_zone_field",
     "normalise_query", "terms_of", "term_of", "phrase_terms", "prefix_root",
-    "scoring_terms", "build_expansions", "expansion_notes",
+    "scoring_terms", "build_expansions", "expansion_notes", "STEM_QUERIES",
     "coerce_filter", "year_range", "parse_range", "is_scoring_stopword",
 ]
