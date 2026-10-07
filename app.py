@@ -59,6 +59,17 @@ if query:
     c3.metric("scored", f"{rep.scored:,}")
     c4.metric("time", f"{rep.elapsed_ms:.0f} ms")
 
+    _t = getattr(rep, "tier_trace", None)
+    if _t is not None:
+        st.caption(
+            f"**S5 champion lists** - tier {_t.tier}: {_t.reason}. "
+            + ("Tier 1 is a *non-safe* optimisation: it scores the champions of "
+               "the query terms rather than every document holding them, so the "
+               "ranking can differ from the exhaustive one."
+               if not _t.fell_through else
+               "Tier 1 held fewer than k documents, so the full postings were "
+               "scored and nothing was lost."))
+
     with st.expander("how the query was understood"):
         if parsed.normalised.strip() != query.strip():
             st.code(f"canonicalised: {parsed.normalised}")

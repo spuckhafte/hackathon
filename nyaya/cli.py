@@ -62,6 +62,9 @@ def cmd_search(args) -> int:
     print(f"mode {args.mode}  ·  {rep.path}  ·  {rep.candidates:,} candidates "
           f"·  {rep.scored:,} scored  ·  {rep.elapsed_ms:.0f} ms  "
           f"·  scorer {rep.scorer}")
+    tier = _tier_line(rep)
+    if tier:
+        print(tier)
     for w in rep.warnings:
         print(f"  ! {w}")
     if not results:
@@ -91,6 +94,26 @@ def cmd_search(args) -> int:
                 print(f"      {s[:190]}")
     print()
     return 0
+
+
+def _tier_line(rep) -> str:
+    """One line saying which tier answered — S5's contribution, made visible.
+
+    Printed only when a tier decision was actually taken, i.e. the free-text path
+    with S5 loaded.  A ``None`` trace means "no tier decision was taken", not
+    "tier 2", so the line is omitted rather than claiming something untrue about
+    a Boolean or filters-only query.
+    """
+    t = getattr(rep, "tier_trace", None)
+    if t is None:
+        return ""
+    body = f"S5 tier {t.tier}  -  {t.reason}"
+    if t.terms_without_champions:
+        body += ("  -  no champion list for "
+                 + ", ".join(t.terms_without_champions[:4])
+                 + " (df below the champion threshold, so their full postings "
+                   "were used)")
+    return "  " + body
 
 
 def _result_json(r) -> Dict[str, Any]:
@@ -141,6 +164,11 @@ def cmd_why(args) -> int:
     if r.explanation is None:
         print("no explanation available", file=sys.stderr)
         return 1
+    tier = _tier_line(rep)
+    if tier:
+        print("candidate selection")
+        print(tier)
+        print()
     print(render(r.explanation, doc_id=r.doc_id))
     v = verify(r.explanation)
     print(f"\n  arithmetic check: {'the parts reproduce the net score' if v['ok'] else 'MISMATCH'}"

@@ -138,12 +138,17 @@ class SearchReport:
     plan: Any = None
     plan_stats: Any = None
     rank_report: Any = None
+    #: `index.tiers.TierTrace` when S5 answered the free-text path, else None.
+    #: None is the honest value for every other path: it means "no tier
+    #: decision was taken", not "tier 2".
+    tier_trace: Any = None
 
     def as_json(self) -> Dict[str, Any]:
         d = {k: v for k, v in self.__dict__.items()
-             if k not in ("plan", "plan_stats", "rank_report")}
+             if k not in ("plan", "plan_stats", "rank_report", "tier_trace")}
         d["plan_stats"] = self.plan_stats.as_json() if self.plan_stats else None
         d["rank_report"] = self.rank_report.as_json() if self.rank_report else None
+        d["tier_trace"] = self.tier_trace.as_json() if self.tier_trace else None
         return d
 
 
@@ -222,7 +227,22 @@ def load_context(mode: str = "S4", reload: bool = False) -> SearchContext:
         ctx.docs = load_manifest()
     except Exception:                                        # pragma: no cover
         ctx.docs = None
-    ctx.tiers = None                      # S5 champion lists, when M2 lands them
+    # S5 (M2's champion lists).  Optional by design: if the store is not built
+    # `ctx.tiers` stays None and `tiers.free_text_candidates` falls back to the
+    # exhaustive postings union, which is byte-identical to the pre-S5 path.
+    # Tiering is therefore a flag, not a fork - the efficiency table needs both
+    # arms to come out of the same function.
+    try:
+        from nyaya.index.tiers import TieredIndex
+
+        ctx.tiers = TieredIndex.load()
+    except FileNotFoundError:
+        ctx.tiers = None
+    except Exception as exc:                                 # pragma: no cover
+        # A corrupt or half-written S5 must degrade to exhaustive scoring, not
+        # take the whole search down with it.
+        ctx.tiers = None
+        ctx.tier_note = f"S5 present but unreadable ({exc}); scoring exhaustively"
     _CONTEXTS[key] = ctx
     return ctx
 
@@ -233,12 +253,19 @@ def load_context(mode: str = "S4", reload: bool = False) -> SearchContext:
 
 
 def _free_text_candidates(terms: Sequence[str], ctx: SearchContext) -> np.ndarray:
-    """Union of the query terms' postings — the ranked-retrieval candidate set.
+    """Exhaustive union of the query terms' postings — the **tier-2** candidate set.
 
     Union, not intersection: ranked retrieval must not require every term, or a
     five-word question returns nothing.  `net.rank`'s index elimination then
     trims the union to documents matching at least half the terms when the query
     is long, which is where the efficiency comes back.
+
+    `search()` no longer calls this directly — it calls
+    `nyaya.index.tiers.free_text_candidates`, which uses S5's champion lists when
+    they are loaded and falls back to exactly this union when they are not.  The
+    function stays because it *is* the exhaustive baseline: `eval/efficiency.py`
+    measures index elimination against it, and that measurement needs the full
+    union rather than whatever tier 1 happened to return.
     """
     index = ctx.index
     lists = []
@@ -286,6 +313,9 @@ def search(query: str, k: int = config.TOP_K, mode: str = FULL_MODE,
     note = getattr(ctx, "authority_note", "")
     if note and settings.treatment:
         rep.warnings.append(note)
+    tnote = getattr(ctx, "tier_note", "")
+    if tnote:
+        rep.warnings.append(tnote)
 
     terms = list(q.free_terms)
 
@@ -294,7 +324,9 @@ def search(query: str, k: int = config.TOP_K, mode: str = FULL_MODE,
     plan = stats = None
     if q.is_free_text and not q.filters:
         rep.path = "free-text"
-        cands = _free_text_candidates(terms, ctx)
+        from nyaya.index.tiers import free_text_candidates
+
+        cands, rep.tier_trace = free_text_candidates(terms, ctx, k)
     else:
         from nyaya.query.planner import plan_query
 

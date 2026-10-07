@@ -201,6 +201,115 @@ def test_the_context_bundles_the_stores_the_contract_names():
     assert ctx.docs is not None
 
 
+# ==========================================================================
+# 2b. S5 is wired into the live free-text path
+# ==========================================================================
+
+_S5 = (config.INDEX / "champions.json").exists() and (config.INDEX / "tiers.npz").exists()
+needs_s5 = pytest.mark.skipif(not _S5, reason="S5 not built")
+
+
+@needs_index
+@needs_s5
+def test_load_context_loads_s5_so_the_live_path_is_tiered():
+    """The whole point of the wiring: `ctx.tiers` is no longer None.
+
+    While it was None the measured champion-list speed-up existed only in M2's
+    harness and not in the shipped system, which is the worst kind of number to
+    put in a report.
+    """
+    ctx = load_context("S4")
+    assert ctx.tiers is not None
+
+
+@needs_index
+@needs_s5
+def test_a_free_text_query_records_which_tier_answered():
+    ctx = load_context("S4")
+    rep = SearchReport()
+    search("basic structure of the constitution", k=10, mode="S4",
+           explain=False, ctx=ctx, report=rep)
+    assert rep.path == "free-text"
+    assert rep.tier_trace is not None
+    assert rep.tier_trace.tier in (1, 2)
+    assert rep.tier_trace.reason
+    # and it survives serialisation, because the UI and the report read as_json()
+    assert rep.as_json()["tier_trace"]["tier"] == rep.tier_trace.tier
+
+
+@needs_index
+def test_a_boolean_query_has_no_tier_trace_rather_than_a_fake_one():
+    """``None`` means "no tier decision was taken", not "tier 2"."""
+    ctx = load_context("S4")
+    rep = SearchReport()
+    search('privacy AND year:>=2000', k=5, mode="S4", explain=False,
+           ctx=ctx, report=rep)
+    assert rep.path != "free-text"
+    assert rep.tier_trace is None
+    assert rep.as_json()["tier_trace"] is None
+
+
+@needs_index
+@needs_s5
+def test_tiering_is_a_flag_not_a_fork():
+    """With ``ctx.tiers = None`` the candidate set is the exhaustive union again.
+
+    This is what lets the efficiency table report both arms from one code path:
+    the tiered and the exhaustive runs differ by one attribute, not by a branch
+    that could drift.
+    """
+    from nyaya.search import _free_text_candidates
+    from nyaya.query.parser import parse
+
+    ctx = load_context("S4")
+    keep = ctx.tiers
+    q = parse("basic structure of the constitution")
+    terms = list(q.free_terms)
+    try:
+        ctx.tiers = None
+        rep_off = SearchReport()
+        search("basic structure of the constitution", k=10, mode="S4",
+               explain=False, ctx=ctx, report=rep_off)
+        exhaustive = _free_text_candidates(terms, ctx)
+        assert rep_off.tier_trace is None
+        assert rep_off.candidates == int(exhaustive.size)
+
+        ctx.tiers = keep
+        rep_on = SearchReport()
+        search("basic structure of the constitution", k=10, mode="S4",
+               explain=False, ctx=ctx, report=rep_on)
+        assert rep_on.tier_trace is not None
+        # a non-safe optimisation: fewer candidates, and the top-1 unchanged on
+        # this query (the general fidelity cost is measured, not asserted here)
+        assert rep_on.candidates < rep_off.candidates
+    finally:
+        ctx.tiers = keep
+
+
+@needs_index
+@needs_s5
+def test_an_unreadable_s5_degrades_to_exhaustive_instead_of_failing(monkeypatch):
+    """A corrupt champion store must not take the whole search down."""
+    import nyaya.index.tiers as T
+    from nyaya import search as S
+
+    def boom(*a, **kw):
+        raise ValueError("truncated tiers.npz")
+
+    monkeypatch.setattr(T.TieredIndex, "load", classmethod(boom))
+    S._CONTEXTS.clear()
+    try:
+        ctx = load_context("S4")
+        assert ctx.tiers is None
+        assert "unreadable" in getattr(ctx, "tier_note", "")
+        rep = SearchReport()
+        out = search("basic structure of the constitution", k=5, mode="S4",
+                     explain=False, ctx=ctx, report=rep)
+        assert out and any("unreadable" in w for w in rep.warnings)
+    finally:
+        S._CONTEXTS.clear()
+
+
 @needs_index
 def test_snippets_cite_paragraphs_honestly():
     from nyaya.search import snippets_for
