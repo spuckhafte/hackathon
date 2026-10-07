@@ -23,6 +23,34 @@ sentence *is* the paragraph's own sentence.  That is a tautological pass and the
 report says so: the verifier earns its keep against generated text, and
 `tests/test_brief.py` exercises it with a deliberately unsupported sentence.
 
+What this check does and does not catch (measured, not assumed)
+--------------------------------------------------------------
+Measured on six real briefs — 36 extractive sentences — against 18 fabrications
+written to be the thing that actually goes wrong with a generated brief: fluent,
+on the topic of the paragraph they cite, and asserting something it does not say
+("Privacy claims must be brought within thirty days of the breach").
+
+* real extractive sentences: cosine 0.9924 to 1.0000 (min 0.9924, median 1.0);
+* the 18 fabrications: 0.0866 to 0.8451, median 0.5600;
+* at the shipped threshold of 0.20 that catches **4 of 18** fabrications, with
+  0 of 36 real sentences wrongly flagged.  A threshold of 0.90 would catch
+  18 of 18, still with no false alarm on extractive text.
+
+The threshold stays at 0.20 anyway, and the honest reason is that it cannot be
+calibrated here: the abstractive path is never exercised in this environment (no
+model API key), and a genuine paraphrase of a paragraph scores far below 0.90, so
+tightening the threshold against a sample of *fabrications only* would make the
+check reject the legitimate output of the one composer it exists for.
+
+So state the limitation rather than the number: a bag-of-words cosine measures
+**topical overlap, not entailment**.  It reliably catches the two mechanical
+failures — a sentence with no citation, and a citation to a paragraph that is not
+in the pack — and it catches a fabrication that wanders off topic.  It does not
+catch a confident, on-topic falsehood that reuses the paragraph's vocabulary.
+Entailment needs a second model, which is out of scope here; what ships is an
+extractive brief whose every sentence is verbatim from a judgment, which is why
+the extractive composer is a feature and not a fallback.
+
 Author: Sumedha (M3)
 """
 from __future__ import annotations

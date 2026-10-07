@@ -210,6 +210,32 @@ def test_the_verifier_catches_an_unsupported_sentence(ctx):
     assert "unsupported" in rep.flagged[0].reason
 
 
+def test_the_verifier_does_not_catch_an_on_topic_fabrication(ctx):
+    """The limitation, pinned so nobody over-claims it in the report.
+
+    A bag-of-words cosine measures topical overlap, not entailment.  A sentence
+    that reuses the paragraph's vocabulary while asserting something it does not
+    say passes at `config.BRIEF_COSINE_THRESHOLD`.  Measured over six real briefs
+    and 18 such fabrications: only 4 of 18 are caught at 0.20, while all 36 real
+    extractive sentences score 0.9924 or better.  The threshold is not raised to
+    0.90 because a genuine paraphrase from the abstractive composer - the one
+    path this check exists for - would also fall below it, and that path cannot
+    be calibrated here (no model API key in this environment).
+
+    If this test ever starts failing because the sentence IS flagged, the
+    verifier got stronger and the docstring in `nyaya/brief/verify.py` needs the
+    new numbers.
+    """
+    pack = _pack(_para("P1", "the right to privacy is protected as an intrinsic "
+                             "part of the right to life and personal liberty "
+                             "under Article 21 of the Constitution"))
+    fabrication = ("The right to privacy was expressly held to be subordinate "
+                   "to the right to property under Article 21. [P1]")
+    rep = verify(fabrication, pack, ctx)
+    assert rep.passed, "if this now fails the verifier improved; update the docs"
+    assert rep.sentences[0].cosine >= config.BRIEF_COSINE_THRESHOLD
+
+
 def test_the_verifier_catches_a_missing_citation(ctx):
     pack = _pack(_para())
     rep = verify("The dying declaration may form the sole basis of conviction.",
