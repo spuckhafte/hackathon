@@ -811,6 +811,100 @@ def compare_orderings(node: Node, ctx: SearchContext) -> Dict[str, Any]:
     return out
 
 
+#: The AND chains the df-ordering experiment is reported over.  Eight real
+#: multi-term conjunctions across different areas of law, with chain lengths
+#: from three to four, so the aggregate is not one lucky query.  Frozen here
+#: rather than typed on the command line so the reported figure is reproducible:
+#: ``python -m nyaya.query.planner --compare-suite`` regenerates it.
+AND_CHAIN_SUITE = (
+    "court AND intention AND murder",
+    "state AND land AND acquisition AND compensation",
+    "evidence AND dying AND declaration",
+    "constitution AND article AND reservation AND promotion",
+    "appeal AND sentence AND death AND confirmation",
+    "contract AND performance AND specific AND relief",
+    "bail AND anticipatory AND discretion",
+    "tax AND sale AND interstate AND trade",
+)
+
+#: The ordering policies ``compare_orderings`` reports, in table order.
+ORDER_POLICIES = ("size", "filters-first", "as-written")
+
+
+def _query_operands(q) -> List[Node]:
+    """The flat AND operand list a parsed query contributes to the experiment."""
+    operands = list(q.filters)
+    if q.root is not None:
+        operands.append(q.root)
+    elif q.free_terms:
+        operands.extend(TermNode(term=t) for t in q.free_terms)
+    return operands
+
+
+def compare_suite(queries: Sequence[str] = AND_CHAIN_SUITE,
+                  ctx: SearchContext = None) -> Dict[str, Any]:
+    """Run :func:`compare_orderings` over a whole query set and total it up.
+
+    One query proves the ordering rule can help; a suite is what the report can
+    quote.  The aggregate ratio is computed on the *totals* (entries compared
+    under ``as-written`` over entries compared under the default), not as a mean
+    of per-query ratios, so one 327x outlier cannot carry the number.
+    """
+    from nyaya.query.parser import parse
+
+    if ctx is None:
+        ctx = _load_context()
+    per_query: List[Dict[str, Any]] = []
+    totals = {p: 0 for p in ORDER_POLICIES}
+    for raw in queries:
+        cmp = compare_orderings(AndNode(_query_operands(parse(raw))), ctx)
+        for p in ORDER_POLICIES:
+            totals[p] += cmp["policies"][p]["compared"]
+        per_query.append({
+            "query": raw,
+            "results": cmp["results"],
+            "same_answer": cmp["same_answer"],
+            "compared": {p: cmp["policies"][p]["compared"] for p in ORDER_POLICIES},
+            "ratio_vs_as_written": cmp["speedup_vs_as_written"],
+        })
+    ratios = [r["ratio_vs_as_written"] for r in per_query]
+    cheapest = max(per_query, key=lambda r: r["ratio_vs_as_written"])
+    least = min(per_query, key=lambda r: r["ratio_vs_as_written"])
+    return {
+        "policy": ORDER_POLICY,
+        "n_queries": len(per_query),
+        "totals": totals,
+        "aggregate_ratio_vs_as_written": totals["as-written"] / max(totals[ORDER_POLICY], 1),
+        "aggregate_ratio_vs_filters_first": (
+            totals["filters-first"] / max(totals[ORDER_POLICY], 1)),
+        "same_answer_everywhere": all(r["same_answer"] for r in per_query),
+        "best_ratio": max(ratios), "best_query": cheapest["query"],
+        "worst_ratio": min(ratios), "worst_query": least["query"],
+        "per_query": per_query,
+    }
+
+
+def print_suite(s: Dict[str, Any]) -> None:
+    print(f"df-ordering experiment over {s['n_queries']} AND chains "
+          f"(default policy: {s['policy']})")
+    print(f"  {'query':<56}{'size':>9}{'filters':>9}{'written':>9}{'ratio':>9}")
+    for r in s["per_query"]:
+        c = r["compared"]
+        print(f"  {r['query']:<56}{c['size']:>9,}{c['filters-first']:>9,}"
+              f"{c['as-written']:>9,}{r['ratio_vs_as_written']:>8.2f}x")
+    t = s["totals"]
+    print(f"  {'TOTAL':<56}{t['size']:>9,}{t['filters-first']:>9,}"
+          f"{t['as-written']:>9,}"
+          f"{s['aggregate_ratio_vs_as_written']:>8.2f}x")
+    print(f"  identical answers under all three policies: "
+          f"{s['same_answer_everywhere']}")
+    print(f"  aggregate: {t['as-written']:,} -> {t['size']:,} entries compared, "
+          f"{s['aggregate_ratio_vs_as_written']:.2f}x less work "
+          f"({s['aggregate_ratio_vs_filters_first']:.2f}x vs filters-first)")
+    print(f"  best  {s['best_ratio']:>8.2f}x  {s['best_query']}")
+    print(f"  worst {s['worst_ratio']:>8.2f}x  {s['worst_query']}")
+
+
 # ==========================================================================
 # 9. CLI
 # ==========================================================================
@@ -839,13 +933,21 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     ap = argparse.ArgumentParser(
         prog="python -m nyaya.query.planner",
         description="Execute a Boolean query and show the chosen plan.")
-    ap.add_argument("query", nargs="+")
+    ap.add_argument("query", nargs="*")
     ap.add_argument("--compare", action="store_true",
                     help="also run the AND chain in the order written")
+    ap.add_argument("--compare-suite", action="store_true",
+                    help="run --compare over AND_CHAIN_SUITE and total it up")
     ap.add_argument("--show", type=int, default=10)
     args = ap.parse_args(argv)
 
     from nyaya.query.parser import parse
+
+    if args.compare_suite:
+        print_suite(compare_suite(ctx=_load_context()))
+        return 0
+    if not args.query:
+        ap.error("give a query, or --compare-suite")
 
     q = parse(" ".join(args.query))
     ctx = _load_context()
@@ -857,12 +959,7 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         print(f"  warning: {w}")
 
     if args.compare:
-        operands = list(q.filters)
-        if q.root is not None:
-            operands.append(q.root)
-        elif q.free_terms:
-            operands.extend(TermNode(term=t) for t in q.free_terms)
-        cmp = compare_orderings(AndNode(operands), ctx)
+        cmp = compare_orderings(AndNode(_query_operands(q)), ctx)
         print()
         print(f"ordering experiment  (same answer: {cmp['same_answer']}, "
               f"{cmp['results']:,} results)")
