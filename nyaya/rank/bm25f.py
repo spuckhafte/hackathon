@@ -45,7 +45,10 @@ __all__ = ["score", "bm25f_scores", "zone_pseudo_tf", "avg_zone_lengths"]
 
 ZONE_IDS: Dict[str, int] = dict(config.ZONE_ID)
 
-_AVG_CACHE: Dict[int, np.ndarray] = {}
+#: Cached on the index object itself, not in a dict keyed by id(): CPython
+#: reuses an id once the object is collected, so an id-keyed cache silently
+#: hands one index another index's averages.  A unit test caught exactly that.
+_AVG_ATTR = "_nyaya_avg_zone_len"
 
 
 def avg_zone_lengths(index) -> np.ndarray:
@@ -55,8 +58,7 @@ def avg_zone_lengths(index) -> np.ndarray:
     zero and make every document that does have it look over-long.  Cached per
     index object: it is a scan of a 13,878 x 6 array and the value never moves.
     """
-    key = id(index)
-    hit = _AVG_CACHE.get(key)
+    hit = getattr(index, _AVG_ATTR, None)
     if hit is not None:
         return hit
     zl = np.asarray(index.zone_len, dtype=np.float64)
@@ -67,7 +69,10 @@ def avg_zone_lengths(index) -> np.ndarray:
         present = col > 0
         if present.any():
             out[j] = float(col[present].mean())
-    _AVG_CACHE[key] = out
+    try:
+        setattr(index, _AVG_ATTR, out)
+    except Exception:                                       # pragma: no cover
+        pass
     return out
 
 

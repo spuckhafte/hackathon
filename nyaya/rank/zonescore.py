@@ -47,7 +47,8 @@ ZONE_IDS: Dict[str, int] = dict(config.ZONE_ID)
 #: 1.0 is plain cosine, 0.0 is no length normalisation.  Ablatable.
 PIVOT_SLOPE = 0.3
 
-_PIVOT_CACHE: Dict[tuple, float] = {}
+#: Cached on the index object (see bm25f._AVG_ATTR for why not id()).
+_PIVOT_ATTR = "_nyaya_zone_pivot"
 
 
 def _pivot(index, zone_j: int) -> float:
@@ -57,16 +58,21 @@ def _pivot(index, zone_j: int) -> float:
     the zeros would drag the pivot down and re-create the short-zone bias the
     pivot exists to remove.
     """
-    key = (id(index), zone_j)
-    hit = _PIVOT_CACHE.get(key)
-    if hit is not None:
-        return hit
+    cache = getattr(index, _PIVOT_ATTR, None)
+    if cache is None:
+        cache = {}
+        try:
+            setattr(index, _PIVOT_ATTR, cache)
+        except Exception:                                   # pragma: no cover
+            pass
+    if zone_j in cache:
+        return cache[zone_j]
     zl = np.asarray(index.zone_len, dtype=np.float64)
     live = np.asarray(index.doc_len, dtype=np.float64) > 0
     col = zl[live, zone_j]
     present = col[col > 0]
     val = float(np.sqrt(present).mean()) if present.size else 1.0
-    _PIVOT_CACHE[key] = val
+    cache[zone_j] = val
     return val
 
 #: Zones with a non-zero weight — the only ones worth reading postings for.
