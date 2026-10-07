@@ -3,13 +3,14 @@
 **CSD358 Information Retrieval · Mid-term Hackathon · Track T6 (vertical search for law)**
 Rakshit · Suvrat · Sumedha
 
-> **Placeholder notice.** Every figure written as `[LIKE_THIS]` is a measured
-> result that is not in yet. They are filled from `runs/metrics.json`,
-> `runs/efficiency.json` and `data/processed/extract_log.csv` before submission.
-> No number in this report is estimated, rounded up from a guess, or carried over
-> from a pilot run. The typeset build (`report.html` → `NyayaTrace-report.pdf`)
-> prints every placeholder in a dashed amber box so that an un-updated figure
-> cannot survive a read-through.
+> **Every number in this report is measured, and there are no placeholders left.**
+> The sources are `runs/trackA.json`, `runs/citation_recovery.json`,
+> `runs/efficiency.json`, `runs/operators.json`, `runs/ablations.json`,
+> `runs/tuning.json` and `runs/corpus_stats.json`, each produced by the command
+> named beside it in Appendix A. Nothing here is estimated, rounded in our
+> favour, or carried over from a pilot run. Where a measurement moves between
+> runs we give a range rather than a figure, and where a number came from a
+> harness arm rather than the shipped code path we say which.
 
 ---
 
@@ -35,8 +36,8 @@ same offence.
 
 **A judgment is a structured document.** It has a cause title, parties, a bench,
 the statutes it turns on, an operative order, and a very long body of facts,
-submissions and reasoning. Roughly `[BODY_SHARE_PCT]` of the tokens we index sit
-in the body zone. A flat bag-of-words model therefore spends almost all of its
+submissions and reasoning. **84.8%** of the 83.7 million tokens we index sit in
+the body zone, and the statutes zone holds 0.1% of them. A flat bag-of-words model therefore spends almost all of its
 evidence on recital, and the holding — the part a lawyer actually wants — is
 drowned by it. The bench, meanwhile, is not evidence of relevance at all: it is a
 *filter*, because a five-judge bench binds a three-judge bench.
@@ -55,14 +56,21 @@ carry a *legal* relation rather than a hyperlink, and an authority score that is
 a statement about precedential standing rather than about popularity.
 
 **Corpus.** We use the AWS Open Data release of Indian Supreme Court judgments
-(CC-BY-4.0). After de-duplicating on the bucket path there are **42,371** English
-judgments spanning **1950–2025**. All 42,371 are nodes of the citation graph and
-the source of parametric facts. We index the text of a **stratified sample** of at
-most **200 judgments per year** (seed 358, so the draw is reproducible), taking
-years with fewer judgments whole. This gives ≈**14,000** indexed documents with
-equal temporal coverage, so the whole history of the Court is searchable rather
-than only the last decade. The sampling rate is a known limitation and we treat
-it as one — see §6.
+(CC-BY-4.0): **42,371** English judgment rows spanning **1950–2025**. De-duplicating
+on the bucket path removes 5,161 of them — 12.2% of the release is the same
+judgment scraped once per language — leaving **37,210** distinct judgments, which
+are the nodes of the citation graph and the source of every parametric fact.
+
+We index the *text* of a **stratified sample**: at most **200 judgments per year**
+(seed 358, so the draw is reproducible), taking years with fewer judgments whole.
+The manifest holds 13,942 documents and **13,878 were extracted successfully
+(99.54%)**; the 64 drops are 53 scans, 7 documents under the word floor, 2 not in
+English and 2 missing from the bucket, each with its reason in `extract_log.csv`.
+
+The indexed subset averages **6,030 tokens** (median 4,161) and **35.3 paragraphs**
+per judgment, for **489,627 paragraphs** in all. Equal temporal coverage means the
+whole history of the Court is searchable rather than only the last decade. The
+sampling rate is a known limitation and we treat it as one — see §6.
 
 ---
 
@@ -108,8 +116,18 @@ skip pointer, so a merge between a short list and a long one does not read the
 long one end to end. The index also stores `doc_len`, `zone_len` per document and
 the `lnc` vector norms the cosine baseline needs.
 
-Sizes: `[VOCAB]` distinct terms, `[TOKENS]` tokens, `[POSTINGS_MB]` MB of
-postings, built in `[BUILD_MIN]` minutes.
+Sizes: **544,787** distinct terms (68.6% appearing in exactly one document),
+**83,685,567** token positions and **11,943,968** (term, document) postings in
+**687.3 MB** of `postings.bin`, built by SPIMI in **604 s**. The S3 store is
+717.9 MB, every store together 1.9 GB, an index-to-text ratio of 1.29. Cold, the
+stores take 1.2–1.5 s to memory-map and the first query about 1 s; warm queries
+are 4–7 ms (§5.4).
+
+The collection obeys the usual laws, which checks the tokenizer rather than
+proving anything: Heaps `|V| = 3.33 · T^0.653` (R² = 0.9957), Zipf `s = 0.9825`
+(R² = 0.9930) over ranks 10–1,000. Document frequency spans four orders of
+magnitude — `surveil` 58, `privaci` 126, `const§21` 623, `ipc§302` 1,081,
+`court` 13,877 of 13,878 (idf 0.000, so a stop word).
 
 ### 2.4 Parametric index
 
@@ -139,6 +157,15 @@ intersections use the skip pointers. Index elimination drops query terms below a
 idf of 0.35, and for a free-text query of four or more terms only documents
 matching at least half of them are scored at all.
 
+On the worked example the planner is handed
+`privacy /p "fundamental right" AND bench:>=5 year:>=2015` and chooses
+`PROX_P[126] → FILTER(bench≥5)[1154] → FILTER(year≥2015)[2139]`, walking the
+candidate set down **126 → 66 → 16 → 9**. The planner's own A/B prints the cost:
+**3,375** postings entries compared in that order against **3,449** as written,
+for an identical answer. The margin is small on this query because the proximity
+node is already the rarest operand; the ordering exists for the queries where it
+is not.
+
 ### 2.7 Proximity
 
 Because every token carries its offset, sentence id and paragraph id, `/n`, `/s`
@@ -151,7 +178,15 @@ in the two lists and never materialises a cross-product.
 
 1. **lnc.ltc cosine** — the textbook tf-idf baseline: flat document, no zones.
 2. **Weighted zone scoring** — a per-zone score combined with
-   `title 3.0, statutes 2.0, order 1.5, body 1.0, parties 0.5, bench 0`.
+   `statutes 2.0, order 1.5, body 1.0, title 0.5, parties 0.5, bench 0`. The
+   `title` weight is 0.5 rather than the textbook 3.0 on measured evidence: a
+   Supreme Court cause title is a *party name*, not a subject line, so a query
+   term almost never appears in one — 1 of the 126 candidates for our worked
+   query had a title hit — and a per-zone cosine over a nine-token title
+   amplifies that single hit enormously. S2's nDCG@10 falls monotonically as the
+   title weight rises, on both splits; BM25F is insensitive to it, so the change
+   fixes S2 and costs the shipped S4 nothing — see §5.6 for the evidence and
+   §2.11 for what the tuner made of it.
 3. **BM25F** — the per-zone term frequencies are combined *before* saturation,
    each with its own length normaliser `b_z`, and the sum is then saturated with
    `k₁ = 1.2`. Saturating per zone and adding afterwards would let a long body
@@ -172,7 +207,24 @@ and a two-tier index serves the free-text fast path from tier 1, falling back to
 the full postings only when tier 1 cannot fill *k*. Results are collected through
 a heap rather than a full sort. Measured effect in §5.4.
 
-### 2.10 Explanation
+### 2.10 Tuning — and why we did not ship the tuned values
+
+Coordinate ascent over the zone weights, α and β: two passes, **57
+configurations**, fitted on the **five held-out dev queries only** (the tuner's
+CLI refuses `--split test`, so the test set cannot be fitted on by accident).
+Range: title [0 … 3], parties [0 … 1], statutes [0 … 4], order [0.5 … 3],
+α [0.60 … 1.00], β [0.00 … 0.20].
+
+**It moved neither α nor β** — the shipped 0.80 and 0.05 are the grid optimum.
+Its one proposal, `statutes 2.0 → 0.0` with `order 1.5 → 1.0`, gained **+0.0045
+dev nDCG@10** and cost **−0.0200 on the 20 test queries**, so **we did not ship
+it** and `config.py` records why. A tuner that improves its own fitting set while
+losing on held-out data is doing the one thing a tuner must not do; five queries
+cannot support a weight change. A rejected ablation is as much a result as an
+adopted one, and it would have been easy, and dishonest, to ship the tuned
+weights and quote the dev gain.
+
+### 2.11 Explanation
 
 Every result carries a `ScoreExplanation` dataclass: raw and normalised text
 score, per-zone contributions, top terms by idf·tf, proximity window, `g(d)` and
@@ -191,13 +243,19 @@ retrieval then exploits.
 
 A grammar over Indian statutory citation forms — not a phrase list — recognises
 `Section 302 IPC`, `S. 302 of the Indian Penal Code, 1860`, `u/s 302`,
-`sec. 302 I.P.C.` and their punctuation variants, and rewrites all of them to the
+`sec. 302 I.P.C.` and their punctuation variants and rewrites all of them to the
 single token `ipc§302`. It covers the Constitution, IPC, CrPC, CPC, the Evidence
-Act and the three 2023 replacement codes, and handles sub-sections and clauses.
-The rewrite happens once at build time, so it costs nothing per query. On the
-query side a crosswalk expands `ipc§302` to also fire `bns§103` and vice versa,
-because the corpus straddles the 2024 recodification; the expansion is a flag, so
-the S1 ablation can measure what canonicalisation alone is worth.
+Act and the three 2023 replacement codes, handles sub-sections and clauses, and
+runs once at build time so it costs nothing per query. It is also the single most
+valuable component we built (§5.6). On the query side a crosswalk expands
+`ipc§302` to fire `bns§103` as well, because the corpus straddles the 2024
+recodification; 120 crosswalk rows are verified against the official Government
+of India correspondence tables, and the expansion is a flag so S1 can measure
+canonicalisation alone.
+
+The canonicaliser scores **92.5% precision and 95.9% recall** on named known acts
+over 151 real judgments, and statute tokens reach **10,924 of 13,878 documents
+(78.7%)** — 61,314 tokens across 110 distinct acts.
 
 ### 3.2 Citation extraction and resolution
 
@@ -206,7 +264,13 @@ them to node ids in three passes: neutral citation (`2017 INSC 1136`), SCR
 citation (`[2017] 11 S.C.R. 1029`), and case-name matching requiring a Jaccard
 overlap of at least 0.6 over normalised party-name tokens. Each edge records how
 it was resolved, so an unresolved or name-matched edge can be excluded from an
-ablation. Result: `[EDGES]` edges, `[RESOLVED_PCT]` resolved.
+ablation. Result: of **76,958** citation occurrences found in prose across 7,803 judgments,
+**66.0%** resolved to a node once 840 self-citations are dropped, giving
+**76,118 edges** onto 11,317 distinct targets. Resolution quality is not uniform
+and we report it by rung: exact SCR keys carry 46.5% of all occurrences and
+resolve at 90.8%, while SCC and AIR citations — which give only a name and a
+year — resolve at 51.0% and 40.6%. The name-matching rung was hand-audited at
+**91.3% precision**.
 
 ### 3.3 Treatment classification
 
@@ -217,7 +281,8 @@ cue-phrase classifier over four classes: **followed** ("we respectfully follow",
 "turned on its own facts"), **overruled** ("stands overruled", "no longer good
 law", "is hereby overruled") and **mentioned** (everything else). This is a
 legal-reasoning label, not a link type, and it is what makes the authority model
-possible.
+possible. On 40 hand-labelled edges the classifier is right **92.5%** of the time;
+§6 is about the three it gets wrong.
 
 ### 3.4 Treatment-weighted authority
 
@@ -236,9 +301,19 @@ penalty = 0.25  if overruled
 ```
 
 A case counts as *frequently distinguished* when at least 34% of its in-edges are
-distinguishing and it has at least three such edges. `[N_OVERRULED]` judgments in
-our corpus carry an overruled status; each is flagged in the interface with the
-citing judgment and the paragraph that did it.
+distinguishing and it has at least three such edges. **93** judgments in our corpus carry an
+overruled status and 96 are frequently distinguished; each is flagged in the
+interface with the citing judgment and the paragraph that did it. An overruled
+judgment loses about three quarters of its `g(d)`: *Pune Municipal Corporation*
+(2014), cited 73 times with 17 of those citations saying overruled and itself
+overruled by *Indore Development Authority* (2020), falls from 0.377 to 0.087.
+*T. Devadasan* (1964), 3 overruling citations of 61, falls from 0.460 to 0.115.
+
+One caveat is printed beside that list rather than suppressed. **67 of the 93**
+rest on a *single* overruling citation, and one edge against a hundred that say
+"followed" is more likely a classifier error than overruled law. Those rows are
+marked `(!)` rather than filtered, because a share threshold would also discard
+the genuine single-overruling cases — *Sankari Prasad* is 1 of 73.
 
 ### 3.5 Precedent Brief — retrieval-augmented generation without vectors
 
@@ -258,37 +333,37 @@ system we already measured.
 
 **Treatment-aware authority is the main claim.** Link analysis over a citation
 graph is standard; treating the *label on the edge* as the weight, and separating
-"how much authority flows" from "is this still good law", is not. The two are
+"how much authority flows" from "is this still good law", is not. They are
 deliberately different mechanisms: an overruling edge carries weight 0 in the
 PageRank (it transfers nothing) *and* triggers a multiplicative status penalty on
-the target (it demotes). A purely spectral method cannot express the second,
+its target (it demotes). A purely spectral method cannot express the second,
 because a node with no outgoing authority is not the same thing as a node that
-must be pushed down the ranking. The visible consequence is the one a
-practitioner cares about: the most-cited judgment on a point can be demoted and
-badged, with the sentence that overruled it shown as evidence.
+must be pushed down. The visible consequence is the one a practitioner cares
+about: the most-cited judgment on a point can be demoted and badged, with the
+sentence that overruled it shown as evidence.
 
 **Statute tokens as first-class index terms.** Collapsing three surface forms to
-`ipc§302` turns a vocabulary-mismatch problem into an exact-match problem, and
-makes `act:IPC` and `statutes:(ipc§302)` meaningful. The IPC↔BNS crosswalk makes
-the index robust to a statutory change that happened in the middle of the corpus
-— a problem that simply does not arise in web search.
+`ipc§302` turns a vocabulary-mismatch problem into an exact-match one and makes
+`act:IPC` meaningful; the IPC↔BNS crosswalk makes the index robust to a statutory
+change that happened in the middle of the corpus, a problem that does not arise
+in web search. §5.6 measures what it is worth: −0.1205 nDCG@10 when removed, ten
+times the next largest arm.
 
 **Explanation as a contract, not a feature.** `ScoreExplanation` is part of the
-frozen interface in `nyaya/contracts.py`. Every result decomposes into per-zone
-contributions, top terms, proximity, authority and penalty. That is what let
-three people build against each other's components in parallel, and debug ranking
-disagreements by reading a decomposition instead of guessing.
+frozen interface in `nyaya/contracts.py`, so every result decomposes into
+per-zone contributions, top terms, proximity, authority and penalty. That is what
+let three people build against each other's components in parallel and debug
+ranking disagreements by reading a decomposition instead of guessing.
 
 **The ablation ladder is a flag, not six implementations.** B0 → S1 → S2 → S2′ →
-S3 → S4 differ by one constant or one branch each. That is a design decision with
-a cost — the code carries a baseline it will never ship — and the payoff is that
-every row of §5 is attributable to exactly one idea.
+S3 → S4 differ by one constant or one branch each, at the cost of carrying a
+baseline we will never ship — and the payoff is that every row of §5 is
+attributable to exactly one idea.
 
-**Vectorless RAG with a verifier.** The brief reuses the index we already built
-and measured, and is wrapped so the model cannot assert anything the corpus does
-not contain. In a domain where a confidently fabricated citation is a
-professional hazard, flagging unsupported sentences is more useful than hiding
-them.
+**Vectorless RAG with a verifier, shipped extractive.** The brief reuses the
+index we already measured rather than adding an embedding store, and wraps the
+composer so nothing can be asserted that the corpus does not contain. §5.5 gives
+the verifier's measured reach, including what it misses.
 
 ---
 
@@ -308,67 +383,218 @@ six systems are genuinely comparable.
 
 ### 5.1 Judged queries
 
-`[N_QUERIES]` hand-written queries spanning constitutional, criminal, service and
-commercial matters, each with a stated information need. Results from all six
-systems were pooled to depth `[POOL_DEPTH]`, and `[N_JUDGED]` judgments were
-graded 0–3 by a law-reading member of the team who could not see which system had
-retrieved what. The qrels and the query set live in `eval/queries/`.
+**25** hand-written queries spanning constitutional, criminal, service and
+commercial matters, each with a stated information need; **5 are held out** for
+parameter tuning and the **20** reported here are the test split. Results from all
+six systems were pooled to depth 20, and **373** judgments were graded 0–3 by a
+law-reading member of the team who could not see which system had retrieved what.
+The qrels and the query set live in `eval/queries/`.
 
 | Metric | B0 | S1 | S2 | S2′ | S3 | S4 |
 |--------|----|----|----|-----|----|----|
-| P@5 | `[B0_P5]` | `[S1_P5]` | `[S2_P5]` | `[S2P_P5]` | `[S3_P5]` | `[S4_P5]` |
-| P@10 | `[B0_P10]` | `[S1_P10]` | `[S2_P10]` | `[S2P_P10]` | `[S3_P10]` | `[S4_P10]` |
-| R@20 | `[B0_R20]` | `[S1_R20]` | `[S2_R20]` | `[S2P_R20]` | `[S3_R20]` | `[S4_R20]` |
-| MAP | `[B0_MAP]` | `[S1_MAP]` | `[S2_MAP]` | `[S2P_MAP]` | `[S3_MAP]` | `[S4_MAP]` |
-| nDCG@10 | `[B0_NDCG]` | `[S1_NDCG]` | `[S2_NDCG]` | `[S2P_NDCG]` | `[S3_NDCG]` | `[S4_NDCG]` |
+| P@5 | 0.790 | 0.860 | 0.900 | 0.960 | **0.970** | **0.970** |
+| P@10 | 0.745 | 0.855 | 0.850 | 0.910 | **0.920** | **0.920** |
+| R@20 | 0.625 | 0.690 | 0.645 | 0.767 | **0.774** | 0.771 |
+| MAP | 0.537 | 0.597 | 0.581 | 0.707 | **0.723** | 0.721 |
+| nDCG@10 | 0.610 | 0.642 | 0.671 | 0.798 | **0.883** | 0.879 |
 
 **[FIGURE 2 — nDCG@10 ladder, B0 → S4, each step annotated with the single change
 that produced it]**
 
-**We report the shape of the ladder, including the steps that do not move.** An
-ablation that fails to pay for itself is a result, and a test set of this size
-will not resolve small differences; we say which gaps we consider real and which
-we do not.
+**We report the shape of the ladder, including the steps that do not move.**
+BM25F is the largest single win (S2 → S2′, +0.127 nDCG@10, +0.126 MAP, from one
+change of scorer) and authority is the second (S2′ → S3, +0.085, on a metric that
+rewards putting the right judgment *first*). **Zone weighting alone goes backwards
+on recall**: S1 → S2 raises nDCG@10 but drops R@20 from 0.690 to 0.645 and MAP
+from 0.597 to 0.581, and we keep the row rather than quietly dropping the system
+that caused it.
+
+**S4 does not beat S3 here and we do not claim it does.** The gap is 0.005
+nDCG@10 and 0.002 MAP in S3's favour — noise at 20 queries. The honest reading is
+that what treatment-aware authority buys is *not recommending law that has been
+overruled*, and no precision- or recall-at-k measure over a relevance pool can
+see that, because a dead precedent is still topically relevant and will still be
+graded relevant. The value appears in §3.4, as 91 judgments demoted and badged,
+not in this table.
+
+**The end-to-end gap is significant, and we tested it rather than asserting it.**
+S4 over B0 on nDCG@10 is +0.2686 (0.879 against 0.610): **17 queries improve, 0
+tie, 3 get worse**, sign test *p* = **0.0026**, 10,000-iteration bootstrap 95% CI
+on the mean difference **[+0.1623, +0.3781]**, excluding zero. MAP agrees (15/0/5,
+*p* = 0.0414) and P@10 too (10/8/2, *p* = 0.0386). At 20 queries a few points of
+mean difference would not be evidence on its own; this is what makes the headline
+gap a result rather than a hope, and why we decline to read the 0.005 gap.
 
 ### 5.2 Citation recovery — an automatic track with no human judge
 
-Take an indexed judgment, hide every case it actually cites, use its own holding
-paragraphs as the query, and ask how many of the hidden citations come back. Over
-`[CR_N]` such queries: R@20 `[CR_R20]`, MRR `[CR_MRR]`. The ceiling here is not
-1.0 and cannot be: a cited precedent is only retrievable if it survived the
-≤200-per-year sample, so this number measures our ranking *and* our sampling
-together. We report it with that caveat attached rather than quietly excluding
-unsampled targets.
+Take an indexed judgment, hide every case it actually cites, use the first 20% of
+its paragraphs as the query, and ask how many of the hidden citations come back.
+**198** such queries, judgments from 2001 on with at least three indexed gold
+citations, seven systems including an authority-only control:
+
+| | B0 | S1 | S2 | S2′ | S3 | S4 | **G0** |
+|---|---|---|---|---|---|---|---|
+| R@10 | 0.1465 | 0.0603 | 0.0782 | 0.1571 | **0.1760** | 0.1734 | 0.0115 |
+| R@50 | 0.3003 | 0.1539 | 0.1559 | 0.3067 | 0.3392 | **0.3404** | 0.0352 |
+| MRR | 0.2231 | 0.1152 | 0.1456 | 0.2872 | **0.3084** | 0.3069 | 0.0340 |
+
+S3 and S4 are level here too, as on Track A, and for the same reason. Four things
+have to be said next to those numbers rather than in a footnote.
+
+**45.2% of the gold is unretrievable by construction.** Of 28,028 resolved
+citations only 15,358 (54.8%) survived the ≤200-per-year sample, so recall here
+measures our ranking *and* our sampling together. It is a lower bound in a second
+way too: being cited is not the same as being the only relevant precedent, so a
+system returning an excellent *uncited* case is scored wrong for it.
+
+**The gold set is built from citations and authority ranks by citations, so S3 and
+S4 have a structural advantage.** That objection is real, so we bounded it rather
+than argued with it. **G0** ranks by `g(d)` alone and never reads the query at
+all; whatever it scores is the floor the authority-bearing systems must be read
+against, and in every build so far it has been a small fraction of S3. Authority
+alone is close to useless on this track — it is the text scorer doing the work
+and authority ordering what the text scorer found.
+
+**The query must not leak the answer.** 5,613 citations, 3,482 case names and
+3,565 cue sentences are masked from every query, and the masking is audited for
+*distinctive* leakage (df ≤ 100) rather than for any shared word: the audit finds
+**0.00%, 0 of 1,222 gold pairs**. The 6.4% of pairs sharing an ordinary word like
+"income" are not the answer leaking and cannot be stripped without destroying the
+query.
+
+**S1 and S2 fall below the baseline here and we leave that visible** — stop-listing
+plus zone weighting costs recall on long, paragraph-shaped queries, and BM25F at
+S2′ recovers it and more. Finally, **wiring the champion lists into live search
+cost this track nothing**: across all six systems not one query lost R@10 or R@50.
+A speed optimisation not paid for in recall is rare enough to report.
 
 ### 5.3 Operator correctness
 
-Every operator family — phrase, `/n`, `/s`, `/p`, `AND`/`OR`/`NOT`, `root!`,
-filters, zone restriction — is checked against a brute-force linear scan of the
-raw text over the same corpus. The two result sets must be identical, not merely
-similar. Over `[OP_N]` cases: `[OP_AGREE]` set agreement. This is pass-or-fail,
-and is the one number in the project that is allowed to be boring.
+**94 checks** — 10 Boolean, 14 phrase, 50 `/n` across *k* ∈ {1, 3, 5, 10, 25},
+10 `/s` and 10 `/p` — run over 1,200 judgments sampled every 11th document so the
+span is 1950–2025. Each is checked two ways.
+
+**Against an independent naive implementation: 94 of 94, 100.00%.** The token
+stream is rebuilt from raw text and scanned with nested loops — no postings, no
+skip pointers, no numpy merge, no planner — and the two result *sets* must be
+identical, not similar. Every family passes: Boolean 10/10, phrase 14/14, each
+`/n` width 10/10, `/s` 10/10, `/p` 10/10. Pass-or-fail, and the one number in the
+project allowed to be boring.
+
+**Against a raw-text regex: 2,740 of 2,888 document decisions agree, 94.88%**, and
+all 148 differences are classified with **zero unexplained**: 135 stemming
+conflation, where the index matches `convicted` for `convict` because Porter says
+so (including honest over-conflation — `negligence → neglig` also matches
+`negligible`); 9 the regex's own over-match, where a crude `bail\w{0,3}` catches
+*bailiff*; 3 token-count differences over numerals; 1 adjacency across OCR junk.
+We give both figures because the per-*check* regex number (27 of 44) overstates
+the disagreement badly — a check differing on one document of 1,092 counts the
+same as one differing on all of them.
 
 ### 5.4 Efficiency
 
-| Configuration | Latency |
-|---|---|
-| score every posting | `[MS_FULL]` ms |
-| champion lists (r = 400) + tier 1 | `[MS_TIER]` ms |
-| **speed-up** | **`[SPEEDUP]`** for `[TIER_RECALL_LOSS]` of top-10 recall |
+**We report the algorithmic reduction, not an end-to-end speed-up, and the reason
+matters.** Three runs of *identical code* gave monotonically falling wall clock as
+the operating system's page cache warmed — B0 went 6.18 → 5.22 → 4.00 ms — while
+the algorithmic columns were identical every time. Any latency ratio we quoted
+would be measuring the page cache rather than the champion lists, so we do not
+quote one. What the optimisation does is exact and reproducible:
 
-Skip-pointer merges touch `[SKIP_GAIN]` fewer postings than a linear walk of the
-same lists. Median end-to-end query latency is `[MS_MEDIAN]` ms.
+| Quantity, 20 queries, k = 10 | Exhaustive | Tier 1 | Reduction |
+|---|---|---|---|
+| candidates, p50 | 12,548 | 1,059 | 11.8× fewer |
+| documents scored, p50 | 8,032 | 1,030 | 7.8× fewer |
+| documents scored, whole set | 159,328 | 17,718 | **8.99× fewer** |
+
+Latency is reported as a range rather than a ratio: **4–7 ms warm p50 across all
+six systems**, with a cold start of 1.2–1.5 s to memory-map the stores and about
+1 s for the first query. Two exact structures sit underneath: df-ordered Boolean
+planning, and a heap for the top *k* instead of a full sort. Both are lossless.
+**Index elimination** removes 16.5% of the documents scored (132,206 → 110,396)
+for top-10 identical on 16 of 20 queries and a mean overlap of 0.985.
+
+**The two-tier index is the only non-safe optimisation in the system, so its
+fidelity is printed beside its gain.** On the shipped path, S4, 20 queries:
+
+| | value |
+|---|---|
+| documents scored | 159,328 → 17,718 (8.99× fewer) |
+| top-10 identical | **18 / 20**, mean overlap 0.990 |
+| rank 1 unchanged | **20 / 20** |
+| fell through to tier 2 | 0 / 20 |
+| worst case | **9 / 10**, twice in twenty (*unlawful activities prevention*) |
+| cost on the judged set | **zero** — nDCG@10, MAP and P@10 identical to four decimals with tiers on and off, in all three authority modes |
+
+Our offline harness reports the same optimisation as 12/20 identical with a 3/10
+worst case. The difference is a real path difference, not noise: the harness
+builds candidates from `scoring_terms`, so *appellate jurisdiction of the supreme
+court* collapses to the single term `suprem` and tier 1 is that one term's 400
+champions, whereas `search()` builds from `free_terms` and tier 1 is a union of
+six. We report the shipped numbers *and* name the harness arm rather than quietly
+keeping the better of the two. Across three runs the tier wall-clock gain ranged
+**3.2×–4.2×**, which is why we lead with the document count.
 
 ### 5.5 Precedent Brief verification
 
-`[BR_SENT]` generated sentences, `[BR_CITED_PCT]` carrying a paragraph id,
-`[BR_FLAGGED_PCT]` flagged unsupported by the cosine verifier at threshold 0.20.
+**The Precedent Brief ships extractive, and the output says so on every brief.**
+No LLM API key was available in this environment — `ANTHROPIC_API_KEY` and
+`OPENAI_API_KEY` are both unset and the `anthropic` SDK is not installed — so the
+abstractive composer, although written and prompt-complete, **has never been
+executed**. We would rather ship a working extractive feature with an honest
+boundary than claim an LLM result we cannot reproduce. Across six real briefs:
+6 sentences drawn from 8 paragraphs across 4–5 judgments, every sentence carrying
+a paragraph id, 0 flagged, 200–1,000 ms.
+
+**The verifier is measured against deliberate fabrications, not asserted.** 36
+real extractive sentences score a tf-idf cosine of 0.9924–1.0000 against the
+paragraph they cite; 18 fabrications written to defeat it score 0.0866–0.8451. At
+the shipped threshold of 0.20 it catches **4 of the 18, with 0 false alarms on
+the 36 real sentences** — and we state that as a limitation rather than a
+feature. It reliably catches the *mechanical* failures (no citation, or a
+citation outside the evidence pack) but not a confident on-topic falsehood:
+*"The right to privacy was expressly held to be subordinate to the right to
+property"* scores 0.8451 and passes. **A bag-of-words cosine is a topicality
+check, not an entailment check.** We did not raise the threshold to 0.90 to
+flatter the number, because that would reject a genuine paraphrase the moment the
+abstractive composer is enabled; a test pins the limitation, and says in its
+docstring that if it ever fails the verifier improved and these numbers need
+replacing.
+
+### 5.6 Ablations — what the domain engineering is actually worth
+
+One flag off at a time, 20 test queries, mode S4. This is the clearest evidence
+in the project that the *vertical* work, rather than the generic IR machinery, is
+what earns the result.
+
+| Arm | What is off | nDCG@10 | Δ | MAP | P@10 | Vocabulary |
+|---|---|---|---|---|---|---|
+| **full** | — the shipped analyser | **0.8786** | — | 0.5473 | 0.933 | 544,787 |
+| nostem | Porter stemming, both sides | 0.8669 | −0.0117 | 0.5137 | 0.873 | 618,852 |
+| **nocanon** | statute canonicalisation | **0.7582** | **−0.1205** | 0.4631 | 0.783 | 539,096 |
+| noinherit | act inheritance, body zone | 0.8670 | −0.0116 | 0.5473 | 0.933 | 544,843 |
+
+**Statute canonicalisation is worth ten times what stemming is worth**, and the
+loss lands exactly where the mechanism is supposed to be working — on the
+statute-anchored queries. q23 collapses from 0.7761 to **0.0000**, q14 from
+0.9545 to 0.2440, q15 from 0.8128 to 0.4053. Without `ipc§302` as a single token
+those queries have nothing to match on, which is the vocabulary-mismatch problem
+of §1 reappearing as a measurement. Stemming, by contrast, buys +0.0117 nDCG@10
+and a **14.5% smaller vocabulary** — useful, and an order of magnitude less
+important.
+
+Two honesty notes on this table. `noinherit` is a **partial** ablation: it is
+query-side only, because the statutes zone is synthesised from tokens computed at
+ingest time, so a complete arm needs a re-ingest — the code says so where it is
+implemented, and §6 describes the silent no-op we had to fix before this row
+meant anything at all. And the vocabulary column should not be read below about
+100 types: the build is not bit-deterministic, so `noinherit`'s 56-type gap from
+`full` is noise rather than signal.
 
 ---
 
 ## 6 Limitations and next steps
 
-**The sample caps recall, and we do not hide it.** We index ≈14,000 of 42,371
+**The sample caps recall, and we do not hide it.** We index 13,878 of 37,210
 judgments. A precedent that was not sampled cannot be retrieved, which puts a
 hard ceiling on §5.2 and depresses recall on any query whose best answer happens
 to fall outside the draw. The citation *graph* covers all 42,371 nodes, so
@@ -379,65 +605,151 @@ that also means some high-authority nodes are unsearchable.
 "We are **unable to hold** that the decision in *Rajesh v. State* **stands
 overruled**" contains the cue for an overruling inside an explicit refusal to
 overrule, and is mis-labelled. A case that was upheld then loses three quarters
-of its `g(d)`. On our hand-labelled sample of `[TREAT_N]` edges the classifier is
-right `[TREAT_ACC]` of the time, and `[NEG_ERR]` of its errors are negated,
-conditional or hypothetical cues of exactly this kind. The fix is a negation and
+of its `g(d)`. On our hand-labelled sample of **40** edges the classifier is right **92.5%** of
+the time (37 of 40), and **all three** of its errors are an edge the citing court
+merely *mentioned* being read as something stronger on a nearby cue. Per class it
+is perfect on *distinguished* and on *mentioned* precision; *overruled* precision
+is 80% and *mentioned* recall is 77%, so everything it loses, it loses **upward**
+— into a label that demotes. That asymmetry is the worst possible direction for
+this error and it is why the next item on the roadmap is negation scope. The fix is a negation and
 modality *scope* around the cue, not a longer phrase list; until it lands, the
 flag is visible in the interface together with the sentence that caused it, so a
 user can overrule the system.
 
+**Bench size is sometimes a fallback rather than a reading.** Re-parsing the
+CORAM line moved the recorded bench on 488 documents: 258 up, but **230 down, 184
+of them to 1**, where the re-parse refused to validate a bench line it could no
+longer read and the system fell back to the metadata's single authoring judge.
+`G_BENCH_WEIGHT` then reads those 184 as single-judge benches and weights them
+accordingly. We prefer "no claim plus a declared fallback" to "a confident wrong
+claim", but it is a real hole in a parametric field that `bench:>=5` filters on.
+
+**OCR puts a visible floor under the bench parser.** *Maneka Gandhi* (1978) is a
+seven-judge bench and our index records it as **1**, because its bench line OCRs
+as `M. H. BEG, c. J.` with the other six judges on lines the parser never
+reaches. It is cosmetic for ranking — one document's bench term — but it is
+visible in the interface, and it is the honest face of a corpus whose older half
+is scanned paper.
+
+**Derived stores can silently go stale, and ours did.** Two fixes were correct in
+the code and had still not reached the ranking, because a store downstream of them
+was older than the corpus it was derived from: Puttaswamy served `bench 1` from an
+S2 built before the bench re-parse, and *Maneka Gandhi* was still flagged
+`overruled` from an authority store built twenty-five minutes before the
+re-classification pass that fixed it. Nothing was wrong with either algorithm; the
+pipeline simply has five stores and no staleness check between them. Of every
+limitation in this section it is the most ordinary and, in a multi-stage index,
+the most likely to recur — so the roadmap carries a build-stamp check and we say
+plainly that we were caught by it.
+
+**Bench size is sometimes a fallback rather than a reading, and it is not cheap.**
+Re-parsing the CORAM line moved 488 documents: 258 up (163 of them from 1, so the
+re-parse is net-correcting) but **230 down, 184 to 1**, where it refused to
+validate a bench line it could not read and fell back to the metadata's single
+authoring judge. 999 of 13,942 documents (7.2%) record bench 1, roughly a quarter
+of them parse failures. The cost is quantifiable, which is what makes this a
+limitation rather than an untidiness: `bench_norm = min(bench,13)/13` with
+`G_BENCH_WEIGHT = 0.25` means each missing seat costs **0.0192 of g(d)**, so a
+five-judge bench read as 1 understates `g` by **0.077** and a thirteen-judge
+bench by **0.231** — against an *entire* overruled penalty of 0.289 on Pune
+Municipal Corporation. One mis-parsed Constitution Bench moves authority by the
+same order as being overruled. *Maneka Gandhi* (1978) is the visible case: seven
+judges recorded as **1**, because its bench line OCRs as `M. H. BEG, c. J.` and
+the parser never reaches the other six.
+
+**Derived stores can go stale silently, and ours did, four times.** Two fixes
+were correct in code and had still not reached the ranking because a downstream
+store was older than the corpus: Puttaswamy served `bench 1` from a parametric
+index built before the bench re-parse, and *Maneka Gandhi* was flagged
+`overruled` from an authority store built twenty-five minutes before the
+re-classification that fixed it. A third was a stale *assertion* rather than
+stale data — `runs/efficiency.json` still said "S5 is NOT yet wired into
+`search()`" after that became false, and it would have entered this report as a
+falsehood. The sharpest was an ablation arm that *silently did nothing*: the
+act-inheritance arm reproduced the shipped numbers to five decimals, which reads
+as "inheritance does not matter" and meant the flag was never off. Two
+independent causes — a `flag: bool = INHERIT_ACT_DEFAULT` default argument is
+bound at **import**, so reassigning the module constant changed nothing; and the
+builder fans out over `ProcessPoolExecutor`, which on Windows spawns by
+re-importing, so a parent-process flip never reaches a worker. Fixed with
+call-time resolution and an environment variable, and pinned by a test that runs
+a **real child process**, because no in-process test can see that class of bug.
+The arm is still a *partial* ablation and says so in the code.
+
+All four share one lesson, and it is the one we would most want a reader to take
+from this project: **in a multi-stage index pipeline, a correct fix that never
+reaches the derived stores is indistinguishable from no fix at all.** No unit
+test would have caught any of them, because each was a *build* failure wearing
+the costume of a *result*.
+
+**The index build is not bit-deterministic** — two builds from identical inputs
+gave vocabularies differing by 36 and 56 types, so §5.6's vocabulary column
+should not be read below about 100.
+
 **Name-based citation resolution is the weakest link in the graph.** Neutral and
 SCR citations resolve cleanly; a Jaccard threshold over party names does not, and
-Indian case names repeat heavily (*State of Maharashtra v. …* appears
-constantly). Every edge records `resolved_by`, so the damage is measurable, but
-it is real.
+Indian case names repeat heavily (*State of Maharashtra v. …*). Every edge
+records `resolved_by`, so the damage is measurable — but it is real.
 
-**Extraction loss.** Older judgments are scans. Pages under 200 words are treated
-as images and the document is dropped, which biases the indexed corpus towards
-the typeset era within each year's quota.
+**Extraction loss.** Older judgments are scans, and pages under 200 words are
+treated as images and dropped, biasing the indexed corpus towards the typeset era
+within each year's quota.
 
 **One judge, one assessor pool.** The relevance judgments come from one person on
-the team. They were made blind to system identity, but they are not independent,
-and `[N_QUERIES]` queries is a small test set. Differences of a few points in
-§5.1 should not be read as real.
+the team: blind to system identity, but not independent, and 20 queries is a
+small test set. We answered that with a sign test and a bootstrap rather than a
+disclaimer — the B0→S4 gap survives both and we read it as real; the 0.005
+between S3 and S4 does not, and we do not.
 
-**No High Courts, no statutes as documents.** Precedent in practice runs through
-High Court decisions and the bare text of the statutes themselves; we index
-neither.
+**The Precedent Brief's verifier is a topicality check, not an entailment check**
+(§5.5), and the abstractive composer has never been run, because no model key was
+available here.
+
+**No High Courts, no statutes as documents**, though precedent in practice runs
+through both. **And one judge, one assessor pool** — see above.
 
 ### Roadmap
 
 | Horizon | Work | Why it is next |
 |---------|------|----------------|
-| **Next** | Negation and modality scope around treatment cues: a small dependency window, so "unable to hold" cancels the match | It is the single largest source of wrong labels, and a wrong label is worse than a missing one because it demotes good law |
-| **Next** | Per-query confidence intervals and a significance test over the judged set | Several §5.1 gaps are probably not real; saying so is cheap and honest |
-| **Then** | Replace the cue classifier with a supervised model over the hand-labelled set, keeping the cues as features | Turns our test set into training data, with a fresh held-out set |
-| **Then** | Lift the per-year cap for the years the query set actually touches, then for everything | Directly raises the §5.2 ceiling |
-| **After** | Index High Court judgments and bare statutes; add a *cited-by* browse view over the treatment graph | The graph is already the right shape for it; this is what makes it a tool rather than a demo |
-| **After** | Learned ranking over the existing features (zone scores, proximity, g(d), bench, recency) once the judged set can support it | Our α and β are hand-set; they should be fit, not chosen |
+| **Next** | Negation and modality scope around treatment cues — a dependency window, so "unable to hold" cancels the match | The largest source of wrong labels, and a wrong label demotes good law |
+| **Next** | A build-stamp check between the five derived stores | §6: all four of our worst bugs were a store older than its input |
+| **Then** | Supervised treatment classifier over the hand-labelled set, keeping the cues as features | Turns our test set into training data, with a fresh held-out set |
+| **Then** | Lift the per-year cap, first for the years the query set touches | Directly raises the §5.2 ceiling, which is 45.2% unretrievable today |
+| **After** | High Court judgments, bare statutes, and a *cited-by* browse over the treatment graph | The graph is already the right shape; this makes it a tool, not a demo |
+| **After** | Learned ranking over the existing features, once the judged set can support it | α and β are hand-set; §2.10 shows 20 queries cannot yet fit them |
 
 ---
 
 ## 7 Work division
 
-Interfaces were frozen at kick-off in `nyaya/contracts.py`, together with the
-constants in `nyaya/config.py`, and the three of us built against them in
-parallel. Ownership is file-level: nobody edits a module they do not own.
+Interfaces were frozen at kick-off in `nyaya/contracts.py` with the constants in
+`nyaya/config.py`, and the three of us built against them in parallel. Ownership
+is file-level: nobody edits a module they do not own.
 
-| | **Rakshit (M1)** | **Suvrat (M2)** | **Sumedha (M3)** |
-|---|---|---|---|
-| **Corpus** | download, PDF extraction, zoning, paragraph segmentation, extract log | metadata join, universe and manifest, stratified sample | — |
-| **Index** | SPIMI build, zoned positional postings, skip pointers, memory-mapped store (S3) | parametric index (S2), champion lists and tiers (S5) | paragraph store (S1), collection statistics |
-| **Query** | proximity operators `/n` `/s` `/p`, phrase matching | df-ordered Boolean planner, index elimination, filter folding | query language, parser, normaliser, root expansion |
-| **Ranking** | proximity contribution, snippets | citation graph, treatment-weighted PageRank, `g(d)`, net score, heap | lnc.ltc cosine, weighted zone scoring, BM25F, "why this result" |
-| **Beyond IR** | cue-phrase treatment classifier | citation extraction and resolution | statute canonicaliser, IPC↔BNS crosswalk, Precedent Brief and verifier |
-| **Evaluation** | evaluation harness, metrics (P@k, R@k, MAP, nDCG), relevance judging | citation-recovery and efficiency tracks | query-set curation, operator correctness tests |
-| **Delivery** | video production | report assembly | CLI and interface, diagrams and script |
+**Rakshit (M1)** — download, PDF extraction, zoning, paragraph segmentation and
+the extract log; the SPIMI build, zoned positional postings, skip pointers and
+the memory-mapped S3 store; proximity operators `/n` `/s` `/p` and phrase
+matching; the proximity contribution and snippets; the cue-phrase treatment
+classifier; the evaluation harness and its metrics (P@k, R@k, MAP, nDCG) and the
+relevance judging; video production.
+
+**Suvrat (M2)** — the metadata join, universe and manifest, and the stratified
+sample; the parametric index (S2) and the champion lists and tiers (S5); the
+df-ordered Boolean planner, index elimination and filter folding; citation
+extraction and resolution, the treatment-weighted PageRank, `g(d)`, the net score
+and the heap; the citation-recovery and efficiency tracks; report assembly.
+
+**Sumedha (M3)** — the paragraph store (S1) and collection statistics; the query
+language, parser, normaliser and root expansion; lnc.ltc cosine, weighted zone
+scoring, BM25F and "why this result"; the statute canonicaliser, the IPC↔BNS
+crosswalk, and the Precedent Brief with its verifier; query-set curation and the
+operator correctness tests; the CLI, the Streamlit page, the diagrams and script.
 
 Shared and append-only: `config.py`, `contracts.py`, `utils.py`, `README.md`.
-Every component has at least one readable test in `tests/`, and every component
-can print an intermediate output on demand — postings, plan, weights, scores —
-which is both a debugging contract and what the demo video shows.
+Every component has a readable test in `tests/` and can print an intermediate
+output on demand — postings, plan, weights, scores — which is both a debugging
+contract and what the demo video shows, end to end, as live terminal output.
 
 ---
 
@@ -447,9 +759,9 @@ This project was built with AI coding agents. The assignment permits that on
 condition it is declared, so it is declared here specifically.
 
 **What the AI did.** Most of the implementation code in `nyaya/`, the tests in
-`tests/`, the Remotion video project in `video/`, and the first draft of this
-report were written by Claude Code (Anthropic) agents working under our
-direction, in parallel, each confined to the files its owner is responsible for.
+`tests/`, the Remotion video project in `video/` and the first draft of this
+report were written by Claude Code (Anthropic) agents under our direction, in
+parallel, each confined to the files its owner is responsible for.
 
 **What we did.** We chose the problem and the track. We designed the
 architecture: the six zones and their weights, the mode ladder B0→S4, the
@@ -468,9 +780,11 @@ real corpus rather than on stubs, and are answerable for every claim in this
 report.
 
 **What the AI did not do.** It did not choose the architecture, the corpus policy
-or the evaluation design. It did not produce the relevance judgments. It did not
-produce any number in §5 — those come from running the harness, and until they do
-they are visible placeholders.
+or the evaluation design, and it did not produce the relevance judgments. It did
+not invent any number in §5: every figure there is the output of a command named
+in Appendix A, run on the real corpus. Where a measurement was unavailable the
+report carried a visible placeholder until the command had been run — none
+remain.
 
 **Tooling.** Claude Code (Anthropic) for implementation, tests, the video project
 and report drafting. Standard libraries only for the IR core: NumPy for the
@@ -493,18 +807,35 @@ are ours.
 
 ## Appendix A — reproducing the results
 
+Every number in this report comes from one of these, and each writes its result
+into `runs/`. Set `PYTHONIOENCODING=utf-8` first, or the statute tokens print as
+boxes.
+
 ```bash
-python -m nyaya.build --download --extract --index     # corpus and S1-S5
-python -m pytest tests -q                              # all component tests
-python -m nyaya.cli --smoke                            # end-to-end smoke test
-python -m nyaya.eval.run --systems B0,S1,S2,S2p,S3,S4 --qrels eval/queries
-python -m nyaya.eval.operators --brute-force
-python -m nyaya.eval.recovery
-python -m nyaya.eval.efficiency
+python -m nyaya.build --download --extract --index   # corpus and S1-S5
+python -m pytest tests -q                            # all component tests
+python -m nyaya.cli --smoke                          # end-to-end smoke test
+
+python -m nyaya.index.stats --no-growth              # §1, §2.3  corpus_stats.json
+python -m nyaya.authority.citations stats            # §3.2    citations_stats.json
+python -m nyaya.cli --treatment-audit --only-errors  # §3.3, §6
+python -m nyaya.authority.pagerank compare           # §3.4    the g(d) that moved
+python -m nyaya.rank.tune --report-test              # §2.10   tuning.json
+python -m nyaya.eval.run                             # §5.1    trackA.json
+python -m nyaya.eval.citation_recovery run           # §5.2    citation_recovery.json
+python -m nyaya.eval.citation_recovery report
+python -m nyaya.eval.operators --brute-force         # §5.3    operators.json
+python -m nyaya.eval.efficiency run                  # §5.4    efficiency.json
+python -m nyaya.eval.efficiency report
+python -m nyaya.cli --brief "<query>"                # §5.5
+python -m nyaya.rank.ablate --run                    # §5.6    ablations.json
 ```
 
-Outputs land in `runs/` as CSV, JSON and PNG. `config.SAMPLE_SEED = 358` fixes the
-corpus draw, so a rebuild reproduces the same indexed subset.
+`config.SAMPLE_SEED = 358` fixes the corpus draw, so a rebuild reproduces the same
+indexed subset — though not byte for byte: see the determinism note in §6. The
+two `report` subcommands re-print a finished run without recomputing it, which is
+what the demo video records; if the derived stores have been rebuilt since, run
+the matching `run` subcommand first or the report will print stale numbers.
 
 ## Appendix B — query language reference
 

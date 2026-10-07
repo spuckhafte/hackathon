@@ -1,0 +1,242 @@
+<!doctype html>
+<html lang="en">
+<head>
+<meta charset="utf-8">
+<title>NyayaTrace — treatment-aware precedent search for Indian case law</title>
+<style>
+/* ------------------------------------------------------------------ page */
+@page {
+  size: A4;
+  margin: 13mm 14mm 12mm 14mm;
+}
+@page :first { margin-top: 11mm; }
+
+:root {
+  --ink: #16191d;
+  --dim: #4c545e;
+  --faint: #8a929c;
+  --rule: #d4d9df;
+  --accent: #9a6b1f;
+  --accent-bg: #fdf6e8;
+  --cool: #2b5f86;
+  --cool-bg: #eef4f9;
+  --violet: #5b4a86;
+  --green: #2f6b45;
+  --alarm: #a93b2c;
+  --code-bg: #f4f6f8;
+}
+
+* { box-sizing: border-box; }
+
+html { font-size: 8.35pt; }
+
+body {
+  margin: 0;
+  font-family: "Source Serif 4", "Charter", Georgia, "Times New Roman", serif;
+  color: var(--ink);
+  line-height: 1.28;
+  text-align: justify;
+  hyphens: auto;
+  -webkit-hyphens: auto;
+}
+
+/* ------------------------------------------------------------- headings */
+h1 {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 18pt;
+  font-weight: 650;
+  line-height: 1.14;
+  letter-spacing: -0.3pt;
+  margin: 0 0 3mm;
+  text-align: left;
+  hyphens: none;
+}
+h2 {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10.1pt;
+  font-weight: 650;
+  margin: 2.8mm 0 1mm;
+  padding-bottom: 1.1mm;
+  border-bottom: 0.6pt solid var(--rule);
+  text-align: left;
+  hyphens: none;
+  break-after: avoid;
+}
+h3 {
+  font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
+  font-size: 10pt;
+  font-weight: 650;
+  margin: 2mm 0 0.8mm;
+  text-align: left;
+  hyphens: none;
+  break-after: avoid;
+}
+h2 + h3 { margin-top: 1.4mm; }
+
+p { margin: 0 0 1.35mm; orphans: 2; widows: 2; }
+p + p { text-indent: 0; }
+
+/* --------------------------------------------------------------- header */
+.masthead {
+  border-bottom: 1.6pt solid var(--ink);
+  padding-bottom: 2.2mm;
+  margin-bottom: 2.2mm;
+}
+.masthead .meta {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8.6pt;
+  color: var(--dim);
+  letter-spacing: 0.2pt;
+  margin-top: 1.4mm;
+}
+.masthead .authors {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 9.6pt;
+  font-weight: 600;
+  margin-top: 1mm;
+}
+
+/* --------------------------------------------------------------- notice */
+.notice {
+  border: 0.8pt dashed var(--accent);
+  background: var(--accent-bg);
+  padding: 2mm 3mm;
+  font-size: 8.5pt;
+  line-height: 1.34;
+  color: #5d4512;
+  margin: 0 0 3mm;
+  border-radius: 1mm;
+}
+.notice strong { color: #4a3708; }
+
+/* ----------------------------------------------------------- placeholder */
+.ph {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 0.86em;
+  color: var(--accent);
+  border: 0.6pt dashed var(--accent);
+  background: var(--accent-bg);
+  padding: 0 0.7mm;
+  border-radius: 0.6mm;
+  white-space: nowrap;
+}
+
+code, kbd {
+  font-family: "JetBrains Mono", "Consolas", "Courier New", monospace;
+  font-size: 0.87em;
+  background: var(--code-bg);
+  padding: 0 0.6mm;
+  border-radius: 0.5mm;
+}
+pre {
+  font-family: "JetBrains Mono", "Consolas", monospace;
+  font-size: 8.3pt;
+  line-height: 1.45;
+  background: var(--code-bg);
+  border-left: 1.6pt solid var(--rule);
+  padding: 1.6mm 3mm;
+  margin: 1.2mm 0 1.7mm;
+  overflow: hidden;
+  white-space: pre-wrap;
+  text-align: left;
+  break-inside: avoid;
+}
+pre code { background: none; padding: 0; font-size: inherit; }
+
+/* --------------------------------------------------------------- tables */
+table {
+  width: 100%;
+  border-collapse: collapse;
+  font-size: 8.3pt;
+  line-height: 1.3;
+  margin: 1.2mm 0 1.8mm;
+  break-inside: avoid;
+  text-align: left;
+  hyphens: none;
+}
+caption {
+  caption-side: top;
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8pt;
+  font-weight: 600;
+  color: var(--dim);
+  text-align: left;
+  padding-bottom: 1.1mm;
+  letter-spacing: 0.2pt;
+}
+th {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8.1pt;
+  font-weight: 600;
+  text-align: left;
+  border-bottom: 0.9pt solid var(--ink);
+  padding: 0.65mm 1.4mm 0.65mm 0;
+  vertical-align: bottom;
+}
+td {
+  padding: 0.65mm 1.4mm 0.65mm 0;
+  border-bottom: 0.4pt solid var(--rule);
+  vertical-align: top;
+}
+tbody tr:last-child td { border-bottom: 0.9pt solid var(--ink); }
+table.num td:not(:first-child), table.num th:not(:first-child) { text-align: right; padding-right: 0; }
+td strong, th strong { font-family: "Inter", Arial, sans-serif; font-weight: 600; }
+
+/* --------------------------------------------------------------- lists */
+ol, ul { margin: 0.8mm 0 1.5mm; padding-left: 4.6mm; }
+li { margin-bottom: 0.45mm; }
+
+/* -------------------------------------------------------------- figures */
+figure {
+  margin: 1.2mm 0 1.4mm;
+  break-inside: avoid;
+}
+figure svg { width: 100%; height: auto; display: block; }
+figure.fig1 svg { width: 62%; margin: 0 auto; }
+figcaption {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 8pt;
+  color: var(--dim);
+  margin-top: 1mm;
+  line-height: 1.32;
+  text-align: left;
+}
+figcaption b { color: var(--ink); }
+
+/* --------------------------------------------------------------- misc */
+.lead { font-size: 9.9pt; }
+.kicker {
+  font-family: "Inter", Arial, sans-serif;
+  font-size: 7.6pt;
+  letter-spacing: 1.1pt;
+  text-transform: uppercase;
+  color: var(--faint);
+  margin: 0 0 1mm;
+}
+.rule { border: none; border-top: 0.6pt solid var(--rule); margin: 2.6mm 0; }
+.page-break { break-before: page; }
+.avoid { break-inside: avoid; }
+em { font-style: italic; }
+.small { font-size: 8.7pt; color: var(--dim); }
+
+.declaration {
+  border: 0.9pt solid var(--ink);
+  padding: 1.8mm 2.4mm 0.8mm;
+  margin-top: 1.6mm;
+  break-inside: avoid;
+}
+.declaration h2 { margin-top: 0; border-bottom: none; padding-bottom: 0; }
+.declaration h3 { font-size: 9.6pt; }
+
+.refs { font-size: 8.6pt; line-height: 1.36; }
+.refs li { margin-bottom: 1.1mm; }
+</style>
+</head>
+<body>
+
+<header class="masthead">
+  <h1>NyayaTrace<span style="color:var(--faint);font-weight:400"> — treatment-aware precedent search for Indian case law</span></h1>
+  <div class="meta">CSD358 Information Retrieval &middot; Mid-term Hackathon &middot; Track T6 — vertical search for law</div>
+  <div class="authors">Rakshit &nbsp;·&nbsp; Suvrat &nbsp;·&nbsp; Sumedha</div>
+</header>
+

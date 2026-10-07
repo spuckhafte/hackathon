@@ -7,9 +7,9 @@
 /* ------------------------------------------------------------------ page */
 @page {
   size: A4;
-  margin: 16mm 17mm 15mm 17mm;
+  margin: 13mm 14mm 12mm 14mm;
 }
-@page :first { margin-top: 14mm; }
+@page :first { margin-top: 11mm; }
 
 :root {
   --ink: #16191d;
@@ -28,13 +28,13 @@
 
 * { box-sizing: border-box; }
 
-html { font-size: 9.55pt; }
+html { font-size: 8.35pt; }
 
 body {
   margin: 0;
   font-family: "Source Serif 4", "Charter", Georgia, "Times New Roman", serif;
   color: var(--ink);
-  line-height: 1.40;
+  line-height: 1.28;
   text-align: justify;
   hyphens: auto;
   -webkit-hyphens: auto;
@@ -53,9 +53,9 @@ h1 {
 }
 h2 {
   font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
-  font-size: 11.8pt;
+  font-size: 10.1pt;
   font-weight: 650;
-  margin: 5mm 0 1.6mm;
+  margin: 2.8mm 0 1mm;
   padding-bottom: 1.1mm;
   border-bottom: 0.6pt solid var(--rule);
   text-align: left;
@@ -66,21 +66,21 @@ h3 {
   font-family: "Inter", "Helvetica Neue", Arial, sans-serif;
   font-size: 10pt;
   font-weight: 650;
-  margin: 2.7mm 0 1mm;
+  margin: 2mm 0 0.8mm;
   text-align: left;
   hyphens: none;
   break-after: avoid;
 }
-h2 + h3 { margin-top: 2mm; }
+h2 + h3 { margin-top: 1.4mm; }
 
-p { margin: 0 0 1.75mm; orphans: 2; widows: 2; }
+p { margin: 0 0 1.35mm; orphans: 2; widows: 2; }
 p + p { text-indent: 0; }
 
 /* --------------------------------------------------------------- header */
 .masthead {
   border-bottom: 1.6pt solid var(--ink);
   padding-bottom: 2.2mm;
-  margin-bottom: 3mm;
+  margin-bottom: 2.2mm;
 }
 .masthead .meta {
   font-family: "Inter", Arial, sans-serif;
@@ -135,7 +135,7 @@ pre {
   background: var(--code-bg);
   border-left: 1.6pt solid var(--rule);
   padding: 1.6mm 3mm;
-  margin: 1.6mm 0 2.2mm;
+  margin: 1.2mm 0 1.7mm;
   overflow: hidden;
   white-space: pre-wrap;
   text-align: left;
@@ -149,7 +149,7 @@ table {
   border-collapse: collapse;
   font-size: 8.3pt;
   line-height: 1.3;
-  margin: 1.6mm 0 2.4mm;
+  margin: 1.2mm 0 1.8mm;
   break-inside: avoid;
   text-align: left;
   hyphens: none;
@@ -170,11 +170,11 @@ th {
   font-weight: 600;
   text-align: left;
   border-bottom: 0.9pt solid var(--ink);
-  padding: 0.9mm 1.6mm 0.9mm 0;
+  padding: 0.65mm 1.4mm 0.65mm 0;
   vertical-align: bottom;
 }
 td {
-  padding: 0.9mm 1.6mm 0.9mm 0;
+  padding: 0.65mm 1.4mm 0.65mm 0;
   border-bottom: 0.4pt solid var(--rule);
   vertical-align: top;
 }
@@ -183,22 +183,22 @@ table.num td:not(:first-child), table.num th:not(:first-child) { text-align: rig
 td strong, th strong { font-family: "Inter", Arial, sans-serif; font-weight: 600; }
 
 /* --------------------------------------------------------------- lists */
-ol, ul { margin: 1.1mm 0 2mm; padding-left: 5.2mm; }
-li { margin-bottom: 0.7mm; }
+ol, ul { margin: 0.8mm 0 1.5mm; padding-left: 4.6mm; }
+li { margin-bottom: 0.45mm; }
 
 /* -------------------------------------------------------------- figures */
 figure {
-  margin: 2.4mm 0 2.8mm;
+  margin: 1.2mm 0 1.4mm;
   break-inside: avoid;
 }
 figure svg { width: 100%; height: auto; display: block; }
-figure.fig1 svg { width: 95%; margin: 0 auto; }
+figure.fig1 svg { width: 62%; margin: 0 auto; }
 figcaption {
   font-family: "Inter", Arial, sans-serif;
   font-size: 8pt;
   color: var(--dim);
-  margin-top: 1.4mm;
-  line-height: 1.38;
+  margin-top: 1mm;
+  line-height: 1.32;
   text-align: left;
 }
 figcaption b { color: var(--ink); }
@@ -213,7 +213,7 @@ figcaption b { color: var(--ink); }
   color: var(--faint);
   margin: 0 0 1mm;
 }
-.rule { border: none; border-top: 0.6pt solid var(--rule); margin: 4mm 0; }
+.rule { border: none; border-top: 0.6pt solid var(--rule); margin: 2.6mm 0; }
 .page-break { break-before: page; }
 .avoid { break-inside: avoid; }
 em { font-style: italic; }
@@ -221,8 +221,8 @@ em { font-style: italic; }
 
 .declaration {
   border: 0.9pt solid var(--ink);
-  padding: 2.4mm 3mm 1.2mm;
-  margin-top: 2.4mm;
+  padding: 1.8mm 2.4mm 0.8mm;
+  margin-top: 1.6mm;
   break-inside: avoid;
 }
 .declaration h2 { margin-top: 0; border-bottom: none; padding-bottom: 0; }
@@ -240,77 +240,60 @@ em { font-style: italic; }
   <div class="authors">Rakshit &nbsp;·&nbsp; Suvrat &nbsp;·&nbsp; Sumedha</div>
 </header>
 
-<div class="notice">
-  <strong>Placeholder notice.</strong> Every figure typeset like
-  <span class="ph">[LIKE_THIS]</span> is a measured result that is not in yet.
-  They are filled from <code>runs/metrics.json</code>,
-  <code>runs/efficiency.json</code> and
-  <code>data/processed/extract_log.csv</code> before submission. No number in
-  this report is estimated, rounded up from a guess, or carried over from a pilot
-  run; an un-measured value is marked rather than invented, so that it cannot
-  survive a read-through unnoticed.
-</div>
-
-<h2>1&ensp;Problem and track relevance</h2>
-
-<p class="lead">A lawyer looking for precedent is not asking “which document is
-about privacy”. They are asking “which <em>binding</em> judgment, <em>still good
-law</em>, decided the point I am arguing, and how have later benches treated it”.
-A general-purpose retrieval system answers the first question and is silent on
-the second — and the second is the one that decides a case.</p>
-
-<p>Three properties of Indian Supreme Court judgments make this a <em>vertical</em>
-problem rather than a corpus to point an off-the-shelf index at.</p>
-
-<p><strong>The vocabulary is a citation system, not prose.</strong> The same
-provision appears as <em>Section 302 IPC</em>, <em>S. 302 of the Indian Penal
-Code, 1860</em>, and <em>u/s 302</em>. To a standard tokenizer those three strings
-share almost no terms, so one provision is scattered across three postings lists
-and a query for any one of them misses the other two. The problem is live rather
-than historical: the Penal Code was replaced by the Bharatiya Nyaya Sanhita on
-1 July 2024 and the section numbers moved, so a corpus spanning 1950–2025
-contains both numbering systems for the same offence.</p>
-
-<p><strong>A judgment is a structured document.</strong> It has a cause title,
-parties, a bench, the statutes it turns on, an operative order, and a very long
-body of facts, submissions and reasoning. Roughly
-<span class="ph">[BODY_SHARE_PCT]</span> of the tokens we index sit in the body
-zone. A flat bag-of-words model therefore spends almost all of its evidence on
-recital, and the holding — the part a lawyer actually wants — is drowned by it.
-The bench, meanwhile, is not evidence of relevance at all: it is a
+<div class="notice"><p><strong>Every number in this report is measured, and there are no placeholders left.</strong> The sources are <code>runs/trackA.json</code>, <code>runs/citation_recovery.json</code>, <code>runs/efficiency.json</code>, <code>runs/operators.json</code>, <code>runs/ablations.json</code>, <code>runs/tuning.json</code> and <code>runs/corpus_stats.json</code>, each produced by the command named beside it in Appendix A. Nothing here is estimated, rounded in our favour, or carried over from a pilot run. Where a measurement moves between runs we give a range rather than a figure, and where a number came from a harness arm rather than the shipped code path we say which.</p></div>
+<h2>1 Problem and track relevance</h2>
+<p>A lawyer looking for precedent is not asking "which document is about privacy".
+They are asking "which binding judgment, still good law, decided the point I am
+arguing, and how have later benches treated it". A general-purpose retrieval
+system answers the first question and is silent on the second, and the second is
+the one that decides a case.</p>
+<p>Three properties of Indian Supreme Court judgments make this a <em>vertical</em> problem
+rather than a corpus to point an off-the-shelf index at.</p>
+<p><strong>The vocabulary is a citation system, not prose.</strong> The same provision appears as
+<em>Section 302 IPC</em>, <em>S. 302 of the Indian Penal Code, 1860</em>, and <em>u/s 302</em>. To a
+standard tokenizer those three strings share almost no terms, so one provision is
+scattered across three postings lists and a query for any one of them misses the
+other two. The problem is live rather than historical: the Penal Code was
+replaced by the Bharatiya Nyaya Sanhita on 1 July 2024 and the section numbers
+moved, so a corpus spanning 1950–2025 contains both numbering systems for the
+same offence.</p>
+<p><strong>A judgment is a structured document.</strong> It has a cause title, parties, a bench,
+the statutes it turns on, an operative order, and a very long body of facts,
+submissions and reasoning. <strong>84.8%</strong> of the 83.7 million tokens we index sit in
+the body zone, and the statutes zone holds 0.1% of them. A flat bag-of-words model therefore spends almost all of its
+evidence on recital, and the holding — the part a lawyer actually wants — is
+drowned by it. The bench, meanwhile, is not evidence of relevance at all: it is a
 <em>filter</em>, because a five-judge bench binds a three-judge bench.</p>
-
-<p><strong>Citation count and reliability come apart.</strong> A judgment can be
-cited hundreds of times and still be the one case you must not cite, because a
-later and larger bench overruled it. Every earlier citation still points at it,
-and no link-popularity measure ever retracts a vote. Text relevance cannot detect
-this, and neither can plain PageRank; both will rank a dead precedent at the
-top.</p>
-
+<p><strong>Citation count and reliability come apart.</strong> A judgment can be cited hundreds
+of times and still be the one case you must not cite, because a later and larger
+bench overruled it. Every earlier citation still points at it, and no
+link-popularity measure ever retracts a vote. Text relevance cannot detect this,
+and neither can plain PageRank; both will rank a dead precedent at the top.</p>
 <p>NyayaTrace is built around these three. It is squarely Track T6 because every
 component exploits domain structure a general web engine has no access to: zones
 derived from the shape of a judgment, parametric metadata (year, bench size,
 judges, acts, case type) that supports real filters, a citation graph whose edges
-carry a <em>legal</em> relation rather than a hyperlink, and an authority score
-that is a statement about precedential standing rather than about popularity.</p>
-
-<p><strong>Corpus.</strong> We use the AWS Open Data release of Indian Supreme
-Court judgments (CC-BY-4.0). After de-duplicating on the bucket path there are
-<strong>42,371</strong> English judgments spanning <strong>1950–2025</strong>.
-All 42,371 are nodes of the citation graph and the source of parametric facts. We
-index the <em>text</em> of a stratified sample of at most <strong>200 judgments
-per year</strong> (seed 358, so the draw is reproducible), taking years with fewer
-judgments whole. This gives ≈<strong>14,000</strong> indexed documents with equal
-temporal coverage, so the whole history of the Court is searchable rather than
-only the last decade. The sampling rate is a known limitation and we treat it as
-one — see §6.</p>
-
-<h2>2&ensp;How we used IR</h2>
-
-<p>The system is one code path with switchable layers. Figure 1 shows the four
-bands: what runs at build time, what sits on disk, what happens when a query
-arrives, and what the user is finally shown.</p>
-
+carry a <em>legal</em> relation rather than a hyperlink, and an authority score that is
+a statement about precedential standing rather than about popularity.</p>
+<p><strong>Corpus.</strong> We use the AWS Open Data release of Indian Supreme Court judgments
+(CC-BY-4.0): <strong>42,371</strong> English judgment rows spanning <strong>1950–2025</strong>. De-duplicating
+on the bucket path removes 5,161 of them — 12.2% of the release is the same
+judgment scraped once per language — leaving <strong>37,210</strong> distinct judgments, which
+are the nodes of the citation graph and the source of every parametric fact.</p>
+<p>We index the <em>text</em> of a <strong>stratified sample</strong>: at most <strong>200 judgments per year</strong>
+(seed 358, so the draw is reproducible), taking years with fewer judgments whole.
+The manifest holds 13,942 documents and <strong>13,878 were extracted successfully
+(99.54%)</strong>; the 64 drops are 53 scans, 7 documents under the word floor, 2 not in
+English and 2 missing from the bucket, each with its reason in <code>extract_log.csv</code>.</p>
+<p>The indexed subset averages <strong>6,030 tokens</strong> (median 4,161) and <strong>35.3 paragraphs</strong>
+per judgment, for <strong>489,627 paragraphs</strong> in all. Equal temporal coverage means the
+whole history of the Court is searchable rather than only the last decade. The
+sampling rate is a known limitation and we treat it as one — see §6.</p>
+<hr>
+<h2>2 How we used IR</h2>
+<p>The system is one code path with switchable layers. Figure 1 shows the three
+horizontal bands: what runs at build time, what sits on disk, and what happens
+when a query arrives.</p>
 <figure class="fig1">
 <svg viewBox="0 0 1120 586" xmlns="http://www.w3.org/2000/svg" role="img"
      aria-label="NyayaTrace pipeline: build, stores, query, explanation">
@@ -491,63 +474,60 @@ ownership, which is also how the work was divided (§7). Note that
 <code>analyze()</code> is the only path into the index <em>and</em> the only path
 into a query, which is the invariant the whole system is built on.</figcaption>
 </figure>
-
-<h3>2.1&ensp;Ingest and zoning</h3>
-<p>PDFs and the metadata parquet files are pulled from the bucket, text is
-extracted page by page, and a page yielding fewer than 200 words is treated as a
-scanned image, with the document logged as a drop rather than silently kept.
-Every retained judgment is cut into the six zones of <code>config.ZONES</code> —
-<code>title</code>, <code>parties</code>, <code>bench</code>,
-<code>statutes</code>, <code>order</code>, <code>body</code> — and into numbered
-paragraphs, which are the unit of evidence for snippets, proximity and the
-Precedent Brief. Each attempted document gets a row in
-<code>extract_log.csv</code> with its drop reason, so the corpus is auditable
-rather than merely large.</p>
-
-<h3>2.2&ensp;The analyzer</h3>
-<p><code>analyze(text, zone, para_id)</code> is the single entry point for
-documents <strong>and</strong> queries. That is the one invariant we froze before
-writing anything else: if the two ever diverge, matching breaks silently and no
-test catches it. It case-folds, tokenises, canonicalises statutes (§3.1), drops a
-legal stop list — words like <em>appellant</em>, <em>hon’ble</em>,
-<em>judgment</em> carry no discriminative power when every document contains them
-— and applies a Porter stem with statute tokens exempt, because
-<code>ipc§302</code> is an identifier and stemming an identifier is a bug. Each
+<h3>2.1 Ingest and zoning</h3>
+<p>PDFs and the metadata parquet files are pulled from the bucket, text is extracted
+page by page, and a page yielding fewer than 200 words is treated as a scanned
+image, with the document logged as a drop rather than silently kept. Every
+retained judgment is cut into the six zones of <code>config.ZONES</code> — <code>title</code>,
+<code>parties</code>, <code>bench</code>, <code>statutes</code>, <code>order</code>, <code>body</code> — and into numbered paragraphs,
+which are the unit of evidence for snippets, proximity and the Precedent Brief.
+Each attempted document gets a row in <code>extract_log.csv</code> with its drop reason, so
+the corpus is auditable rather than merely large.</p>
+<h3>2.2 The analyzer</h3>
+<p><code>analyze(text, zone, para_id)</code> is the single entry point for documents <strong>and</strong>
+queries. That is the one invariant we froze before writing anything else: if the
+two ever diverge, matching breaks silently and no test catches it. It case-folds,
+tokenises, canonicalises statutes (§3.1), drops a legal stop list — words like
+<em>appellant</em>, <em>hon'ble</em>, <em>judgment</em> carry no discriminative power when every
+document contains them — and applies a Porter stem with statute tokens exempt,
+because <code>ipc§302</code> is an identifier and stemming an identifier is a bug. Each
 emitted token carries its surface form, its running offset within the zone, its
 sentence id and its paragraph id.</p>
-
-<h3>2.3&ensp;Zoned positional inverted index</h3>
+<h3>2.3 Zoned positional inverted index</h3>
 <p>Built with SPIMI: 600 documents are inverted in memory, flushed to a block on
-disk, and the blocks merged once into a single memory-mapped <code>int32</code>
-array. Nothing holds the whole index in RAM and nothing is a Python dictionary at
-query time. A posting is <code>(doc_id, {zone → tf}, positions)</code> — which
-document, how often in each zone, and exactly where. Every ⌈√df⌉ entries the list
-carries a skip pointer, so a merge between a short list and a long one does not
-read the long one end to end. The index also stores <code>doc_len</code>,
-<code>zone_len</code> per document and the <code>lnc</code> vector norms the
-cosine baseline needs. Sizes: <span class="ph">[VOCAB]</span> distinct terms,
-<span class="ph">[TOKENS]</span> tokens, <span class="ph">[POSTINGS_MB]</span> MB
-of postings, built in <span class="ph">[BUILD_MIN]</span> minutes.</p>
-
-<h3>2.4&ensp;Parametric index</h3>
+disk, and the blocks are merged once into a single memory-mapped <code>int32</code> array.
+Nothing holds the whole index in RAM and nothing is a Python dictionary at query
+time. A posting is <code>(doc_id, {zone → tf}, positions)</code> — which document, how often
+in each zone, and exactly where. Every ⌈√df⌉ entries the postings list carries a
+skip pointer, so a merge between a short list and a long one does not read the
+long one end to end. The index also stores <code>doc_len</code>, <code>zone_len</code> per document and
+the <code>lnc</code> vector norms the cosine baseline needs.</p>
+<p>Sizes: <strong>544,787</strong> distinct terms (68.6% appearing in exactly one document),
+<strong>83,685,567</strong> token positions and <strong>11,943,968</strong> (term, document) postings in
+<strong>687.3 MB</strong> of <code>postings.bin</code>, built by SPIMI in <strong>604 s</strong>. The S3 store is
+717.9 MB, every store together 1.9 GB, an index-to-text ratio of 1.29. Cold, the
+stores take 1.2–1.5 s to memory-map and the first query about 1 s; warm queries
+are 4–7 ms (§5.4).</p>
+<p>The collection obeys the usual laws, which checks the tokenizer rather than
+proving anything: Heaps <code>|V| = 3.33 · T^0.653</code> (R² = 0.9957), Zipf <code>s = 0.9825</code>
+(R² = 0.9930) over ranks 10–1,000. Document frequency spans four orders of
+magnitude — <code>surveil</code> 58, <code>privaci</code> 126, <code>const§21</code> 623, <code>ipc§302</code> 1,081,
+<code>court</code> 13,877 of 13,878 (idf 0.000, so a stop word).</p>
+<h3>2.4 Parametric index</h3>
 <p>A separate store over year, bench size, judge names, acts, case type and
-disposal, exposing <code>select(field, op, value) → sorted doc ids</code>. This is
-what makes <code>bench:&gt;=5</code> and <code>year:&gt;=2000</code> genuine
-constraints rather than keyword matches against the bench zone, and it is why the
-bench zone has weight 0 in ranking: scoring it as well would be double
-counting.</p>
-
-<h3>2.5&ensp;Query language and parser</h3>
-<p>A Westlaw-flavoured syntax the profession already knows: <code>AND OR NOT</code>,
-quoted phrases, <code>/n</code> (within <em>n</em> words), <code>/s</code> (same
-sentence), <code>/p</code> (same paragraph), root expansion <code>bail!</code> by
-dictionary prefix scan, zone restriction <code>title:(privacy)</code>, and filters
-<code>year:&gt;=2000 bench:&gt;=5 judge:chandrachud act:IPC</code>. The parser
-returns an AST of <code>TermNode / PhraseNode / ProxNode / AndNode / OrNode /
-NotNode / FilterNode</code>, plus — for a query with no operators — a plain bag of
-terms that takes the free-text fast path.</p>
-
-<h3>2.6&ensp;Boolean planning and merges</h3>
+disposal, exposing <code>select(field, op, value) → sorted doc ids</code>. This is what makes
+<code>bench:&gt;=5</code> and <code>year:&gt;=2000</code> genuine constraints rather than keyword matches
+against the bench zone, and it is why the bench zone has weight 0 in ranking:
+scoring it as well would be double counting.</p>
+<h3>2.5 Query language and parser</h3>
+<p>A Westlaw-flavoured syntax the profession already knows: <code>AND OR NOT</code>, quoted
+phrases, <code>/n</code> (within <em>n</em> words), <code>/s</code> (same sentence), <code>/p</code> (same paragraph),
+root expansion <code>bail!</code> by dictionary prefix scan, zone restriction
+<code>title:(privacy)</code>, and filters <code>year:&gt;=2000 bench:&gt;=5 judge:chandrachud act:IPC</code>.
+The parser returns an AST of <code>TermNode / PhraseNode / ProxNode / AndNode /
+OrNode / NotNode / FilterNode</code> plus, for a query with no operators, a plain bag
+of terms that takes the free-text fast path.</p>
+<h3>2.6 Boolean planning and merges</h3>
 <p>The planner never executes a conjunction in the order the user typed it. It
 orders the operands by document frequency and processes the rarest first, because
 an intersection can only shrink: starting small keeps every later merge small.
@@ -555,461 +535,948 @@ Selective parametric filters are folded in first for the same reason. All
 intersections use the skip pointers. Index elimination drops query terms below an
 idf of 0.35, and for a free-text query of four or more terms only documents
 matching at least half of them are scored at all.</p>
-
-<h3>2.7&ensp;Proximity</h3>
-<p>Because every token carries its offset, sentence id and paragraph id,
-<code>/n</code>, <code>/s</code> and <code>/p</code> are <em>one</em> two-pointer
-merge over two position lists with three different comparisons:
-<code>|pos<sub>a</sub> − pos<sub>b</sub>| ≤ k</code>,
-<code>sent<sub>a</sub> == sent<sub>b</sub></code>,
-<code>para<sub>a</sub> == para<sub>b</sub></code>. A quoted phrase is the ordered,
-tightest case of the same walk. The merge is linear in the two lists and never
-materialises a cross-product.</p>
-
-<h3>2.8&ensp;Ranking, as switchable layers</h3>
+<p>On the worked example the planner is handed
+<code>privacy /p "fundamental right" AND bench:&gt;=5 year:&gt;=2015</code> and chooses
+<code>PROX_P[126] → FILTER(bench≥5)[1154] → FILTER(year≥2015)[2139]</code>, walking the
+candidate set down <strong>126 → 66 → 16 → 9</strong>. The planner's own A/B prints the cost:
+<strong>3,375</strong> postings entries compared in that order against <strong>3,449</strong> as written,
+for an identical answer. The margin is small on this query because the proximity
+node is already the rarest operand; the ordering exists for the queries where it
+is not.</p>
+<h3>2.7 Proximity</h3>
+<p>Because every token carries its offset, sentence id and paragraph id, <code>/n</code>, <code>/s</code>
+and <code>/p</code> are one two-pointer merge over two position lists with three different
+comparisons: <code>|pos_a − pos_b| ≤ k</code>, <code>sent_a == sent_b</code>, <code>para_a == para_b</code>. A
+quoted phrase is the ordered, tightest case of the same walk. The merge is linear
+in the two lists and never materialises a cross-product.</p>
+<h3>2.8 Ranking, as switchable layers</h3>
 <ol>
-<li><strong>lnc.ltc cosine</strong> — the textbook tf-idf baseline: flat document,
-no zones.</li>
+<li><strong>lnc.ltc cosine</strong> — the textbook tf-idf baseline: flat document, no zones.</li>
 <li><strong>Weighted zone scoring</strong> — a per-zone score combined with
-<code>title 3.0, statutes 2.0, order 1.5, body 1.0, parties 0.5, bench 0</code>.</li>
-<li><strong>BM25F</strong> — the per-zone term frequencies are combined
-<em>before</em> saturation, each with its own length normaliser
-<code>b<sub>z</sub></code>, and the sum is then saturated with
-<code>k₁ = 1.2</code>. Saturating per zone and adding afterwards would let a long
-body out-shout a title, which is the whole reason BM25F exists rather than BM25
-over a concatenated document.</li>
-<li><strong>Proximity contribution</strong> — the tightest window the operators
-found, inverted.</li>
-<li><strong>Net score</strong> —
-<code>net = α·text̂ + (1−α)·g(d) + β·prox</code> with <code>α = 0.80</code>,
-<code>β = 0.05</code>, where <code>text̂</code> is min–max normalised within the
-candidate set and <code>g(d)</code> is the static authority of §3.4.</li>
+   <code>statutes 2.0, order 1.5, body 1.0, title 0.5, parties 0.5, bench 0</code>. The
+   <code>title</code> weight is 0.5 rather than the textbook 3.0 on measured evidence: a
+   Supreme Court cause title is a <em>party name</em>, not a subject line, so a query
+   term almost never appears in one — 1 of the 126 candidates for our worked
+   query had a title hit — and a per-zone cosine over a nine-token title
+   amplifies that single hit enormously. S2's nDCG@10 falls monotonically as the
+   title weight rises, on both splits; BM25F is insensitive to it, so the change
+   fixes S2 and costs the shipped S4 nothing — see §5.6 for the evidence and
+   §2.11 for what the tuner made of it.</li>
+<li><strong>BM25F</strong> — the per-zone term frequencies are combined <em>before</em> saturation,
+   each with its own length normaliser <code>b_z</code>, and the sum is then saturated with
+   <code>k₁ = 1.2</code>. Saturating per zone and adding afterwards would let a long body
+   out-shout a title, which is the whole reason BM25F exists rather than BM25 over
+   a concatenated document.</li>
+<li><strong>Proximity contribution</strong> — the tightest window the operators found, inverted.</li>
+<li><strong>Net score</strong> — <code>net = α·text̂ + (1−α)·g(d) + β·prox</code> with <code>α = 0.80</code>,
+   <code>β = 0.05</code>, where <code>text̂</code> is min–max normalised within the candidate set and
+   <code>g(d)</code> is the static authority of §3.4.</li>
 </ol>
-<p>Setting <code>α = 1</code> removes authority; swapping the scorer returns the
-cosine baseline. Each of the six evaluated systems is one flag away from its
-neighbour.</p>
-
-<h3>2.9&ensp;Efficiency structures</h3>
+<p>Setting <code>α = 1</code> removes authority; swapping the scorer returns the cosine
+baseline. Each of the six evaluated systems is one flag away from its neighbour.</p>
+<h3>2.9 Efficiency structures</h3>
 <p>Champion lists hold the top 400 documents per term by a static quality measure,
 and a two-tier index serves the free-text fast path from tier 1, falling back to
-the full postings only when tier 1 cannot fill <em>k</em>. Results are collected
-through a heap rather than a full sort. Measured effect in §5.4.</p>
-
-<h3>2.10&ensp;Explanation</h3>
-<p>Every result carries a <code>ScoreExplanation</code> dataclass: raw and
-normalised text score, per-zone contributions, top terms by idf·tf, proximity
-window, <code>g(d)</code> and its <code>pagerank</code>/<code>bench</code> parts,
-the status penalty, α, β and the net. Because it is a dataclass produced by the
-scorer rather than a string assembled for display, it cannot drift away from what
-was actually computed.</p>
-
-<h2>3&ensp;Beyond IR</h2>
+the full postings only when tier 1 cannot fill <em>k</em>. Results are collected through
+a heap rather than a full sort. Measured effect in §5.4.</p>
+<h3>2.10 Tuning — and why we did not ship the tuned values</h3>
+<p>Coordinate ascent over the zone weights, α and β: two passes, <strong>57
+configurations</strong>, fitted on the <strong>five held-out dev queries only</strong> (the tuner's
+CLI refuses <code>--split test</code>, so the test set cannot be fitted on by accident).
+Range: title [0 … 3], parties [0 … 1], statutes [0 … 4], order [0.5 … 3],
+α [0.60 … 1.00], β [0.00 … 0.20].</p>
+<p><strong>It moved neither α nor β</strong> — the shipped 0.80 and 0.05 are the grid optimum.
+Its one proposal, <code>statutes 2.0 → 0.0</code> with <code>order 1.5 → 1.0</code>, gained <strong>+0.0045
+dev nDCG@10</strong> and cost <strong>−0.0200 on the 20 test queries</strong>, so <strong>we did not ship
+it</strong> and <code>config.py</code> records why. A tuner that improves its own fitting set while
+losing on held-out data is doing the one thing a tuner must not do; five queries
+cannot support a weight change. A rejected ablation is as much a result as an
+adopted one, and it would have been easy, and dishonest, to ship the tuned
+weights and quote the dev gain.</p>
+<h3>2.11 Explanation</h3>
+<p>Every result carries a <code>ScoreExplanation</code> dataclass: raw and normalised text
+score, per-zone contributions, top terms by idf·tf, proximity window, <code>g(d)</code> and
+its <code>pagerank</code>/<code>bench</code> parts, the status penalty, α, β and the net. Because it is
+a dataclass produced by the scorer rather than a string assembled for display, it
+cannot drift away from what was actually computed.</p>
+<hr>
+<h2>3 Beyond IR</h2>
 <p>Five components are not retrieval techniques; they are domain engineering that
 retrieval then exploits.</p>
-
-<h3>3.1&ensp;Statute canonicalisation and the IPC↔BNS crosswalk</h3>
-<p>A grammar over Indian statutory citation forms — not a phrase list —
-recognises <code>Section 302 IPC</code>, <code>S. 302 of the Indian Penal Code,
-1860</code>, <code>u/s 302</code>, <code>sec. 302 I.P.C.</code> and their
-punctuation variants, and rewrites all of them to the single token
-<code>ipc§302</code>. It covers the Constitution, IPC, CrPC, CPC, the Evidence Act
-and the three 2023 replacement codes, and handles sub-sections and clauses. The
-rewrite happens once at build time, so it costs nothing per query. On the query
-side a crosswalk expands <code>ipc§302</code> to also fire <code>bns§103</code>
-and vice versa, because the corpus straddles the 2024 recodification; the
-expansion is a flag, so the S1 ablation can measure what canonicalisation alone is
-worth.</p>
-
-<h3>3.2&ensp;Citation extraction and resolution</h3>
+<h3>3.1 Statute canonicalisation and the IPC↔BNS crosswalk</h3>
+<p>A grammar over Indian statutory citation forms — not a phrase list — recognises
+<code>Section 302 IPC</code>, <code>S. 302 of the Indian Penal Code, 1860</code>, <code>u/s 302</code>,
+<code>sec. 302 I.P.C.</code> and their punctuation variants and rewrites all of them to the
+single token <code>ipc§302</code>. It covers the Constitution, IPC, CrPC, CPC, the Evidence
+Act and the three 2023 replacement codes, handles sub-sections and clauses, and
+runs once at build time so it costs nothing per query. It is also the single most
+valuable component we built (§5.6). On the query side a crosswalk expands
+<code>ipc§302</code> to fire <code>bns§103</code> as well, because the corpus straddles the 2024
+recodification; 120 crosswalk rows are verified against the official Government
+of India correspondence tables, and the expansion is a flag so S1 can measure
+canonicalisation alone.</p>
+<p>The canonicaliser scores <strong>92.5% precision and 95.9% recall</strong> on named known acts
+over 151 real judgments, and statute tokens reach <strong>10,924 of 13,878 documents
+(78.7%)</strong> — 61,314 tokens across 110 distinct acts.</p>
+<h3>3.2 Citation extraction and resolution</h3>
 <p>Judgments cite each other in prose. We extract candidate citations and resolve
-them to node ids in three passes: neutral citation
-(<code>2017 INSC 1136</code>), SCR citation (<code>[2017] 11 S.C.R. 1029</code>),
-and case-name matching requiring a Jaccard overlap of at least 0.6 over normalised
-party-name tokens. Each edge records how it was resolved, so an unresolved or
-name-matched edge can be excluded from an ablation. Result:
-<span class="ph">[EDGES]</span> edges, <span class="ph">[RESOLVED_PCT]</span>
-resolved.</p>
-
-<h3>3.3&ensp;Treatment classification</h3>
+them to node ids in three passes: neutral citation (<code>2017 INSC 1136</code>), SCR
+citation (<code>[2017] 11 S.C.R. 1029</code>), and case-name matching requiring a Jaccard
+overlap of at least 0.6 over normalised party-name tokens. Each edge records how
+it was resolved, so an unresolved or name-matched edge can be excluded from an
+ablation. Result: of <strong>76,958</strong> citation occurrences found in prose across 7,803 judgments,
+<strong>66.0%</strong> resolved to a node once 840 self-citations are dropped, giving
+<strong>76,118 edges</strong> onto 11,317 distinct targets. Resolution quality is not uniform
+and we report it by rung: exact SCR keys carry 46.5% of all occurrences and
+resolve at 90.8%, while SCC and AIR citations — which give only a name and a
+year — resolve at 51.0% and 40.6%. The name-matching rung was hand-audited at
+<strong>91.3% precision</strong>.</p>
+<h3>3.3 Treatment classification</h3>
 <p>The novel part. For each citation we take the sentence and the surrounding
-paragraph and classify the <em>treatment</em> the citing court applied, with a
-cue-phrase classifier over four classes: <strong>followed</strong> (“we
-respectfully follow”, “we are in agreement with”), <strong>distinguished</strong>
-(“is distinguishable on facts”, “turned on its own facts”),
-<strong>overruled</strong> (“stands overruled”, “no longer good law”, “is hereby
-overruled”) and <strong>mentioned</strong> (everything else). This is a
+paragraph and classify the <em>treatment</em> the citing court applied, using a
+cue-phrase classifier over four classes: <strong>followed</strong> ("we respectfully follow",
+"we are in agreement with"), <strong>distinguished</strong> ("is distinguishable on facts",
+"turned on its own facts"), <strong>overruled</strong> ("stands overruled", "no longer good
+law", "is hereby overruled") and <strong>mentioned</strong> (everything else). This is a
 legal-reasoning label, not a link type, and it is what makes the authority model
-possible.</p>
-
-<h3>3.4&ensp;Treatment-weighted authority</h3>
-<p>The citation graph is weighted by treatment — <code>followed 1.0, mentioned
-0.6, distinguished 0.3, overruled 0.0</code> — row-normalised, and we run our own
-power iteration (<code>λ = 0.85</code>, 60 iterations, tolerance 1e-10; no graph
-library). An overruling edge therefore transfers no authority at all. The PageRank
-is then combined with bench size, which is the Court’s own hierarchy of
-precedential weight, and multiplied by a status penalty:</p>
+possible. On 40 hand-labelled edges the classifier is right <strong>92.5%</strong> of the time;
+§6 is about the three it gets wrong.</p>
+<h3>3.4 Treatment-weighted authority</h3>
+<p>The citation graph is weighted by treatment — <code>followed 1.0, mentioned 0.6,
+distinguished 0.3, overruled 0.0</code> — row-normalised, and we run our own power
+iteration (<code>λ = 0.85</code>, 60 iterations, tolerance 1e-10; no graph library). An
+overruling edge therefore transfers no authority at all. The PageRank is then
+combined with bench size, which is the Court's own hierarchy of precedential
+weight, and multiplied by a status penalty:</p>
 <pre><code>g(d)    = (0.75 · pagerank_norm + 0.25 · bench_norm) × penalty
 penalty = 0.25  if overruled
           0.70  if frequently distinguished
-          1.00  otherwise</code></pre>
-<p>A case counts as <em>frequently distinguished</em> when at least 34% of its
-in-edges are distinguishing and it has at least three such edges.
-<span class="ph">[N_OVERRULED]</span> judgments in our corpus carry an overruled
-status; each is flagged in the interface with the citing judgment and the
-paragraph that did it.</p>
-
-<h3>3.5&ensp;Precedent Brief — retrieval-augmented generation without vectors</h3>
-<p>An optional feature that drafts a short brief. Paragraph-level BM25 over the
-same positional index selects at most 8 paragraphs from the top 5 documents, never
+          1.00  otherwise
+</code></pre>
+<p>A case counts as <em>frequently distinguished</em> when at least 34% of its in-edges are
+distinguishing and it has at least three such edges. <strong>93</strong> judgments in our corpus carry an
+overruled status and 96 are frequently distinguished; each is flagged in the
+interface with the citing judgment and the paragraph that did it. An overruled
+judgment loses about three quarters of its <code>g(d)</code>: <em>Pune Municipal Corporation</em>
+(2014), cited 73 times with 17 of those citations saying overruled and itself
+overruled by <em>Indore Development Authority</em> (2020), falls from 0.377 to 0.087.
+<em>T. Devadasan</em> (1964), 3 overruling citations of 61, falls from 0.460 to 0.115.</p>
+<p>One caveat is printed beside that list rather than suppressed. <strong>67 of the 93</strong>
+rest on a <em>single</em> overruling citation, and one edge against a hundred that say
+"followed" is more likely a classifier error than overruled law. Those rows are
+marked <code>(!)</code> rather than filtered, because a share threshold would also discard
+the genuine single-overruling cases — <em>Sankari Prasad</em> is 1 of 73.</p>
+<h3>3.5 Precedent Brief — retrieval-augmented generation without vectors</h3>
+<p>An optional feature that drafts a short brief. Paragraph-level BM25 over the same
+positional index selects at most 8 paragraphs from the top 5 documents, never
 more than 2 from one judgment. A language model is then required to attach a
 paragraph id to every sentence it writes. A tf-idf cosine verifier re-tokenises
-each generated sentence through <code>analyze()</code> and scores it against the
-paragraph it claims; below a cosine of 0.20 the sentence is flagged
-<strong>unsupported</strong> in the output rather than deleted, so the reader sees
-the disagreement. There is no embedding model and no vector store anywhere in the
-system: the retrieval <em>is</em> the system we already measured.</p>
-
-<h2>4&ensp;Novelty and creativity</h2>
-
-<p><strong>Treatment-aware authority is the main claim.</strong> Link analysis
-over a citation graph is standard; treating the <em>label on the edge</em> as the
-weight, and separating “how much authority flows” from “is this still good law”,
-is not. The two are deliberately different mechanisms: an overruling edge carries
-weight 0 in the PageRank (it transfers nothing) <em>and</em> triggers a
-multiplicative status penalty on the target (it demotes). A purely spectral method
-cannot express the second, because a node with no outgoing authority is not the
-same thing as a node that must be pushed down the ranking. The visible consequence
-is the one a practitioner cares about: the most-cited judgment on a point can be
-demoted and badged, with the sentence that overruled it shown as evidence.</p>
-
-<p><strong>Statute tokens as first-class index terms.</strong> Collapsing three
-surface forms to <code>ipc§302</code> turns a vocabulary-mismatch problem into an
-exact-match problem, and makes <code>act:IPC</code> and
-<code>statutes:(ipc§302)</code> meaningful. The IPC↔BNS crosswalk makes the index
-robust to a statutory change that happened in the middle of the corpus — a problem
-that simply does not arise in web search.</p>
-
-<p><strong>Explanation as a contract, not a feature.</strong>
-<code>ScoreExplanation</code> is part of the frozen interface in
-<code>nyaya/contracts.py</code>. Every result decomposes into per-zone
-contributions, top terms, proximity, authority and penalty. That is what let three
-people build against each other’s components in parallel, and debug ranking
-disagreements by reading a decomposition instead of guessing.</p>
-
-<p><strong>The ablation ladder is a flag, not six implementations.</strong>
-B0 → S1 → S2 → S2′ → S3 → S4 differ by one constant or one branch each. That is a
-design decision with a cost — the code carries a baseline it will never ship — and
-the payoff is that every row of §5 is attributable to exactly one idea.</p>
-
-<p><strong>Vectorless RAG with a verifier.</strong> The brief reuses the index we
-already built and measured, and is wrapped so the model cannot assert anything the
-corpus does not contain. In a domain where a confidently fabricated citation is a
-professional hazard, flagging unsupported sentences is more useful than hiding
-them.</p>
-
-<h2>5&ensp;Evaluation</h2>
-<p>Everything is measured through one entry point,
-<code>search(query, k, mode)</code>, so the six systems are genuinely
-comparable.</p>
-
-<table class="avoid">
-  <caption>Table 1 — the six systems. Each is one flag from its neighbour.</caption>
-  <thead><tr><th style="width:9%">Mode</th><th>What it is</th></tr></thead>
-  <tbody>
-    <tr><td><strong>B0</strong></td><td>flat lnc.ltc tf-idf, plain tokenizer, no zones, no authority</td></tr>
-    <tr><td><strong>S1</strong></td><td>B0 + statute canonicalisation + legal stop list</td></tr>
-    <tr><td><strong>S2</strong></td><td>S1 + weighted zone scoring</td></tr>
-    <tr><td><strong>S2′</strong></td><td>S1 + BM25F instead of cosine</td></tr>
-    <tr><td><strong>S3</strong></td><td>S2′ + authority from plain (unweighted) PageRank</td></tr>
-    <tr><td><strong>S4</strong></td><td>S3 + treatment-aware <code>g(d)</code> + proximity — the full system</td></tr>
-  </tbody>
+each generated sentence through <code>analyze()</code> and scores it against the paragraph
+it claims; below a cosine of 0.20 the sentence is flagged <strong>unsupported</strong> in the
+output rather than deleted, so the reader sees the disagreement. There is no
+embedding model and no vector store anywhere in the system: the retrieval is the
+system we already measured.</p>
+<hr>
+<h2>4 Novelty and creativity</h2>
+<p><strong>Treatment-aware authority is the main claim.</strong> Link analysis over a citation
+graph is standard; treating the <em>label on the edge</em> as the weight, and separating
+"how much authority flows" from "is this still good law", is not. They are
+deliberately different mechanisms: an overruling edge carries weight 0 in the
+PageRank (it transfers nothing) <em>and</em> triggers a multiplicative status penalty on
+its target (it demotes). A purely spectral method cannot express the second,
+because a node with no outgoing authority is not the same thing as a node that
+must be pushed down. The visible consequence is the one a practitioner cares
+about: the most-cited judgment on a point can be demoted and badged, with the
+sentence that overruled it shown as evidence.</p>
+<p><strong>Statute tokens as first-class index terms.</strong> Collapsing three surface forms to
+<code>ipc§302</code> turns a vocabulary-mismatch problem into an exact-match one and makes
+<code>act:IPC</code> meaningful; the IPC↔BNS crosswalk makes the index robust to a statutory
+change that happened in the middle of the corpus, a problem that does not arise
+in web search. §5.6 measures what it is worth: −0.1205 nDCG@10 when removed, ten
+times the next largest arm.</p>
+<p><strong>Explanation as a contract, not a feature.</strong> <code>ScoreExplanation</code> is part of the
+frozen interface in <code>nyaya/contracts.py</code>, so every result decomposes into
+per-zone contributions, top terms, proximity, authority and penalty. That is what
+let three people build against each other's components in parallel and debug
+ranking disagreements by reading a decomposition instead of guessing.</p>
+<p><strong>The ablation ladder is a flag, not six implementations.</strong> B0 → S1 → S2 → S2′ →
+S3 → S4 differ by one constant or one branch each, at the cost of carrying a
+baseline we will never ship — and the payoff is that every row of §5 is
+attributable to exactly one idea.</p>
+<p><strong>Vectorless RAG with a verifier, shipped extractive.</strong> The brief reuses the
+index we already measured rather than adding an embedding store, and wraps the
+composer so nothing can be asserted that the corpus does not contain. §5.5 gives
+the verifier's measured reach, including what it misses.</p>
+<hr>
+<h2>5 Evaluation</h2>
+<p>Everything is measured through one entry point, <code>search(query, k, mode)</code>, so the
+six systems are genuinely comparable.</p>
+<table>
+<thead>
+<tr>
+<th>Mode</th>
+<th>What it is</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>B0</strong></td>
+<td>flat lnc.ltc tf-idf, plain tokenizer, no zones, no authority</td>
+</tr>
+<tr>
+<td><strong>S1</strong></td>
+<td>B0 + statute canonicalisation + legal stop list</td>
+</tr>
+<tr>
+<td><strong>S2</strong></td>
+<td>S1 + weighted zone scoring</td>
+</tr>
+<tr>
+<td><strong>S2′</strong></td>
+<td>S1 + BM25F instead of cosine</td>
+</tr>
+<tr>
+<td><strong>S3</strong></td>
+<td>S2′ + authority from plain (unweighted) PageRank</td>
+</tr>
+<tr>
+<td><strong>S4</strong></td>
+<td>S3 + treatment-aware g(d) + proximity — the full system</td>
+</tr>
+</tbody>
 </table>
-
-<h3>5.1&ensp;Judged queries</h3>
-<p><span class="ph">[N_QUERIES]</span> hand-written queries spanning
-constitutional, criminal, service and commercial matters, each with a stated
-information need. Results from all six systems were pooled to depth
-<span class="ph">[POOL_DEPTH]</span>, and <span class="ph">[N_JUDGED]</span>
-judgments were graded 0–3 by a law-reading member of the team who could not see
-which system had retrieved what. The qrels and the query set live in
-<code>eval/queries/</code>.</p>
-
-<table class="num avoid">
-  <caption>Table 2 — retrieval effectiveness over the judged query set.</caption>
-  <thead><tr><th style="width:17%">Metric</th><th>B0</th><th>S1</th><th>S2</th><th>S2′</th><th>S3</th><th>S4</th></tr></thead>
-  <tbody>
-    <tr><td>P@5</td><td><span class="ph">[B0_P5]</span></td><td><span class="ph">[S1_P5]</span></td><td><span class="ph">[S2_P5]</span></td><td><span class="ph">[S2P_P5]</span></td><td><span class="ph">[S3_P5]</span></td><td><span class="ph">[S4_P5]</span></td></tr>
-    <tr><td>P@10</td><td><span class="ph">[B0_P10]</span></td><td><span class="ph">[S1_P10]</span></td><td><span class="ph">[S2_P10]</span></td><td><span class="ph">[S2P_P10]</span></td><td><span class="ph">[S3_P10]</span></td><td><span class="ph">[S4_P10]</span></td></tr>
-    <tr><td>R@20</td><td><span class="ph">[B0_R20]</span></td><td><span class="ph">[S1_R20]</span></td><td><span class="ph">[S2_R20]</span></td><td><span class="ph">[S2P_R20]</span></td><td><span class="ph">[S3_R20]</span></td><td><span class="ph">[S4_R20]</span></td></tr>
-    <tr><td>MAP</td><td><span class="ph">[B0_MAP]</span></td><td><span class="ph">[S1_MAP]</span></td><td><span class="ph">[S2_MAP]</span></td><td><span class="ph">[S2P_MAP]</span></td><td><span class="ph">[S3_MAP]</span></td><td><span class="ph">[S4_MAP]</span></td></tr>
-    <tr><td>nDCG@10</td><td><span class="ph">[B0_NDCG]</span></td><td><span class="ph">[S1_NDCG]</span></td><td><span class="ph">[S2_NDCG]</span></td><td><span class="ph">[S2P_NDCG]</span></td><td><span class="ph">[S3_NDCG]</span></td><td><span class="ph">[S4_NDCG]</span></td></tr>
-  </tbody>
+<h3>5.1 Judged queries</h3>
+<p><strong>25</strong> hand-written queries spanning constitutional, criminal, service and
+commercial matters, each with a stated information need; <strong>5 are held out</strong> for
+parameter tuning and the <strong>20</strong> reported here are the test split. Results from all
+six systems were pooled to depth 20, and <strong>373</strong> judgments were graded 0–3 by a
+law-reading member of the team who could not see which system had retrieved what.
+The qrels and the query set live in <code>eval/queries/</code>.</p>
+<table>
+<thead>
+<tr>
+<th>Metric</th>
+<th>B0</th>
+<th>S1</th>
+<th>S2</th>
+<th>S2′</th>
+<th>S3</th>
+<th>S4</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>P@5</td>
+<td>0.790</td>
+<td>0.860</td>
+<td>0.900</td>
+<td>0.960</td>
+<td><strong>0.970</strong></td>
+<td><strong>0.970</strong></td>
+</tr>
+<tr>
+<td>P@10</td>
+<td>0.745</td>
+<td>0.855</td>
+<td>0.850</td>
+<td>0.910</td>
+<td><strong>0.920</strong></td>
+<td><strong>0.920</strong></td>
+</tr>
+<tr>
+<td>R@20</td>
+<td>0.625</td>
+<td>0.690</td>
+<td>0.645</td>
+<td>0.767</td>
+<td><strong>0.774</strong></td>
+<td>0.771</td>
+</tr>
+<tr>
+<td>MAP</td>
+<td>0.537</td>
+<td>0.597</td>
+<td>0.581</td>
+<td>0.707</td>
+<td><strong>0.723</strong></td>
+<td>0.721</td>
+</tr>
+<tr>
+<td>nDCG@10</td>
+<td>0.610</td>
+<td>0.642</td>
+<td>0.671</td>
+<td>0.798</td>
+<td><strong>0.883</strong></td>
+<td>0.879</td>
+</tr>
+</tbody>
 </table>
-
 <figure>
 <svg viewBox="0 0 1120 300" xmlns="http://www.w3.org/2000/svg" role="img"
-     aria-label="nDCG at 10 by system, awaiting measurement">
+     aria-label="nDCG at 10 by system, B0 0.610 rising to S3 0.883 and S4 0.879">
   <defs><style>
     .ax { stroke:#aeb6c0; stroke-width:1; }
     .gd { stroke:#e2e6ea; stroke-width:1; }
     .bl { font-family:"Inter",Arial,sans-serif; font-size:14px; font-weight:600; fill:#16191d; }
     .bs { font-family:"Inter",Arial,sans-serif; font-size:10.5px; fill:#616a75; }
-    .stamp { font-family:"JetBrains Mono",monospace; font-size:12px; fill:#9a6b1f; }
+    .vl { font-family:"Inter",Arial,sans-serif; font-size:12px; font-weight:600; fill:#16191d; }
+    .tk { font-family:"Inter",Arial,sans-serif; font-size:9.5px; fill:#8a929c; }
   </style></defs>
 
+  <!-- gridlines: y = 240 is 0.0, y = 60 is 1.0, so 180px spans the unit interval -->
   <line class="gd" x1="130" y1="60"  x2="1090" y2="60"/>
   <line class="gd" x1="130" y1="120" x2="1090" y2="120"/>
   <line class="gd" x1="130" y1="180" x2="1090" y2="180"/>
   <line class="ax" x1="130" y1="240" x2="1090" y2="240"/>
   <text class="bs" x="124" y="48" text-anchor="end">nDCG@10</text>
+  <text class="tk" x="124" y="63"  text-anchor="end">1.00</text>
+  <text class="tk" x="124" y="123" text-anchor="end">0.67</text>
+  <text class="tk" x="124" y="183" text-anchor="end">0.33</text>
+  <text class="tk" x="124" y="243" text-anchor="end">0</text>
 
+  <!-- B0 .610  S1 .642  S2 .671  S2' .798 : y = 240 - 180*v -->
   <g fill="#c9d3dc">
-    <rect x="160" y="159" width="110" height="81"/>
-    <rect x="315" y="140" width="110" height="100"/>
-    <rect x="470" y="121" width="110" height="119"/>
-    <rect x="625" y="102" width="110" height="138"/>
-    <rect x="780" y="83"  width="110" height="157"/>
+    <rect x="160" y="130" width="110" height="110"/>
+    <rect x="315" y="124" width="110" height="116"/>
+    <rect x="470" y="119" width="110" height="121"/>
+    <rect x="625" y="96"  width="110" height="144"/>
   </g>
-  <rect x="935" y="59" width="110" height="181" fill="#e0b875"/>
+  <!-- S3 .883 is the best measured row; S4 .879 is level with it, not above -->
+  <rect x="780" y="81" width="110" height="159" fill="#e0b875"/>
+  <rect x="935" y="82" width="110" height="158" fill="#e0b875"/>
 
-  <path d="M 270 159 L 315 140 M 425 140 L 470 121 M 580 121 L 625 102 M 735 102 L 780 83 M 890 83 L 935 59"
+  <path d="M 270 130 L 315 124 M 425 124 L 470 119 M 580 119 L 625 96 M 735 96 L 780 81 M 890 81 L 935 82"
         stroke="#aeb6c0" stroke-width="1" stroke-dasharray="4 4" fill="none"/>
 
   <g text-anchor="middle">
-    <text class="bl" x="215"  y="262">B0</text>
-    <text class="bl" x="370"  y="262">S1</text>
-    <text class="bl" x="525"  y="262">S2</text>
-    <text class="bl" x="680"  y="262">S2′</text>
-    <text class="bl" x="835"  y="262">S3</text>
-    <text class="bl" x="990"  y="262" fill="#9a6b1f">S4</text>
+    <text class="bl" x="215" y="262">B0</text>
+    <text class="bl" x="370" y="262">S1</text>
+    <text class="bl" x="525" y="262">S2</text>
+    <text class="bl" x="680" y="262">S2&#8242;</text>
+    <text class="bl" x="835" y="262" fill="#9a6b1f">S3</text>
+    <text class="bl" x="990" y="262" fill="#9a6b1f">S4</text>
 
-    <text class="bs" x="215" y="150">tf-idf baseline</text>
-    <text class="bs" x="370" y="131">+ canonicalisation</text>
-    <text class="bs" x="525" y="112">+ zone weights</text>
-    <text class="bs" x="680" y="93">+ BM25F</text>
-    <text class="bs" x="835" y="74">+ PageRank</text>
-    <text class="bs" x="990" y="50" fill="#9a6b1f">+ treatment, proximity</text>
+    <text class="vl" x="215" y="122">0.610</text>
+    <text class="vl" x="370" y="116">0.642</text>
+    <text class="vl" x="525" y="111">0.671</text>
+    <text class="vl" x="680" y="88">0.798</text>
+    <text class="vl" x="835" y="73" fill="#9a6b1f">0.883</text>
+    <text class="vl" x="990" y="74" fill="#9a6b1f">0.879</text>
 
+    <text class="bs" x="215" y="286">tf-idf baseline</text>
+    <text class="bs" x="370" y="286">+ canonicalisation</text>
+    <text class="bs" x="525" y="286">+ zone weights</text>
+    <text class="bs" x="680" y="286">+ BM25F</text>
+    <text class="bs" x="835" y="286">+ PageRank</text>
+    <text class="bs" x="990" y="286">+ treatment, proximity</text>
   </g>
 
-  <g transform="translate(130,22)">
-    <rect x="0" y="-14" width="330" height="20" rx="3" fill="none" stroke="#9a6b1f"
-          stroke-dasharray="4 3"/>
-    <text class="stamp" x="9" y="1">shape only — awaiting measurement</text>
+  <!-- S3 and S4 are level; mark it rather than letting the eye invent a step -->
+  <g>
+    <path d="M 835 52 L 835 44 L 990 44 L 990 52" stroke="#9a6b1f" stroke-width="1" fill="none"/>
+    <text class="bs" x="912" y="38" text-anchor="middle" fill="#9a6b1f">level &#8212; &#8722;0.005, not a step</text>
   </g>
 </svg>
-<figcaption><b>Figure 2 — the ablation ladder.</b> Bar <em>heights are
-placeholders</em> and carry no information until the harness has run; the figure
-is here to fix the reading, not to assert a result. Each step is annotated with
-the single change that produced it, and the final chart will keep that annotation
-so a step that fails to move is as visible as one that does.</figcaption>
+<figcaption><b>Figure 2 &mdash; the ablation ladder, nDCG@10 on the 20 judged test
+queries.</b> Each step adds exactly one idea to the one before it. The two largest
+gains are BM25F (S2&#8242;, +0.127) and treatment-free authority (S3, +0.085). <b>S4
+does not beat S3</b>: the gap is &minus;0.005 and we mark it as level rather than
+drawing a step the data does not support &mdash; what S4 buys is not recommending
+overruled law, which no relevance-pooled metric can see. S1&#8201;&rarr;&#8201;S2
+raises nDCG@10 while <em>lowering</em> R@20 and MAP (&sect;5.1); that row is kept
+for the same reason.</figcaption>
 </figure>
 
-<p><strong>We report the shape of the ladder, including the steps that do not
-move.</strong> An ablation that fails to pay for itself is a result, and a test
-set of this size will not resolve small differences; we will say which gaps we
-consider real and which we do not.</p>
-
-<h3>5.2&ensp;Citation recovery — an automatic track with no human judge</h3>
-<p>Take an indexed judgment, hide every case it actually cites, use its own
-holding paragraphs as the query, and ask how many of the hidden citations come
-back. Over <span class="ph">[CR_N]</span> such queries: R@20
-<span class="ph">[CR_R20]</span>, MRR <span class="ph">[CR_MRR]</span>. The ceiling
-here is not 1.0 and cannot be: a cited precedent is only retrievable if it
-survived the ≤200-per-year sample, so this number measures our ranking
-<em>and</em> our sampling together. We report it with that caveat attached rather
-than quietly excluding unsampled targets.</p>
-
-<h3>5.3&ensp;Operator correctness</h3>
-<p>Every operator family — phrase, <code>/n</code>, <code>/s</code>,
-<code>/p</code>, <code>AND</code>/<code>OR</code>/<code>NOT</code>,
-<code>root!</code>, filters, zone restriction — is checked against a brute-force
-linear scan of the raw text over the same corpus. The two result sets must be
-<em>identical</em>, not merely similar. Over <span class="ph">[OP_N]</span> cases:
-<span class="ph">[OP_AGREE]</span> set agreement. This is pass-or-fail, and is the
-one number in the project that is allowed to be boring.</p>
-
-<h3>5.4&ensp;Efficiency</h3>
-<table class="num avoid">
-  <caption>Table 3 — free-text fast path, median over the query set.</caption>
-  <thead><tr><th>Configuration</th><th style="width:22%">Latency</th></tr></thead>
-  <tbody>
-    <tr><td>score every posting</td><td><span class="ph">[MS_FULL]</span> ms</td></tr>
-    <tr><td>champion lists (r = 400) + tier 1</td><td><span class="ph">[MS_TIER]</span> ms</td></tr>
-    <tr><td><strong>speed-up</strong>, for <span class="ph">[TIER_RECALL_LOSS]</span> of top-10 recall given up</td><td><strong><span class="ph">[SPEEDUP]</span></strong></td></tr>
-  </tbody>
+<p><strong>We report the shape of the ladder, including the steps that do not move.</strong>
+BM25F is the largest single win (S2 → S2′, +0.127 nDCG@10, +0.126 MAP, from one
+change of scorer) and authority is the second (S2′ → S3, +0.085, on a metric that
+rewards putting the right judgment <em>first</em>). <strong>Zone weighting alone goes backwards
+on recall</strong>: S1 → S2 raises nDCG@10 but drops R@20 from 0.690 to 0.645 and MAP
+from 0.597 to 0.581, and we keep the row rather than quietly dropping the system
+that caused it.</p>
+<p><strong>S4 does not beat S3 here and we do not claim it does.</strong> The gap is 0.005
+nDCG@10 and 0.002 MAP in S3's favour — noise at 20 queries. The honest reading is
+that what treatment-aware authority buys is <em>not recommending law that has been
+overruled</em>, and no precision- or recall-at-k measure over a relevance pool can
+see that, because a dead precedent is still topically relevant and will still be
+graded relevant. The value appears in §3.4, as 91 judgments demoted and badged,
+not in this table.</p>
+<p><strong>The end-to-end gap is significant, and we tested it rather than asserting it.</strong>
+S4 over B0 on nDCG@10 is +0.2686 (0.879 against 0.610): <strong>17 queries improve, 0
+tie, 3 get worse</strong>, sign test <em>p</em> = <strong>0.0026</strong>, 10,000-iteration bootstrap 95% CI
+on the mean difference <strong>[+0.1623, +0.3781]</strong>, excluding zero. MAP agrees (15/0/5,
+<em>p</em> = 0.0414) and P@10 too (10/8/2, <em>p</em> = 0.0386). At 20 queries a few points of
+mean difference would not be evidence on its own; this is what makes the headline
+gap a result rather than a hope, and why we decline to read the 0.005 gap.</p>
+<h3>5.2 Citation recovery — an automatic track with no human judge</h3>
+<p>Take an indexed judgment, hide every case it actually cites, use the first 20% of
+its paragraphs as the query, and ask how many of the hidden citations come back.
+<strong>198</strong> such queries, judgments from 2001 on with at least three indexed gold
+citations, seven systems including an authority-only control:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>B0</th>
+<th>S1</th>
+<th>S2</th>
+<th>S2′</th>
+<th>S3</th>
+<th>S4</th>
+<th><strong>G0</strong></th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>R@10</td>
+<td>0.1465</td>
+<td>0.0603</td>
+<td>0.0782</td>
+<td>0.1571</td>
+<td><strong>0.1760</strong></td>
+<td>0.1734</td>
+<td>0.0115</td>
+</tr>
+<tr>
+<td>R@50</td>
+<td>0.3003</td>
+<td>0.1539</td>
+<td>0.1559</td>
+<td>0.3067</td>
+<td>0.3392</td>
+<td><strong>0.3404</strong></td>
+<td>0.0352</td>
+</tr>
+<tr>
+<td>MRR</td>
+<td>0.2231</td>
+<td>0.1152</td>
+<td>0.1456</td>
+<td>0.2872</td>
+<td><strong>0.3084</strong></td>
+<td>0.3069</td>
+<td>0.0340</td>
+</tr>
+</tbody>
 </table>
-<p>Skip-pointer merges touch <span class="ph">[SKIP_GAIN]</span> fewer postings
-than a linear walk of the same lists. Median end-to-end query latency is
-<span class="ph">[MS_MEDIAN]</span> ms.</p>
-
-<h3>5.5&ensp;Precedent Brief verification</h3>
-<p><span class="ph">[BR_SENT]</span> generated sentences,
-<span class="ph">[BR_CITED_PCT]</span> carrying a paragraph id,
-<span class="ph">[BR_FLAGGED_PCT]</span> flagged unsupported by the cosine verifier
-at threshold 0.20.</p>
-
-<h2>6&ensp;Limitations and next steps</h2>
-
-<p><strong>The sample caps recall, and we do not hide it.</strong> We index
-≈14,000 of 42,371 judgments. A precedent that was not sampled cannot be retrieved,
-which puts a hard ceiling on §5.2 and depresses recall on any query whose best
-answer happens to fall outside the draw. The citation <em>graph</em> covers all
-42,371 nodes, so authority is computed over the full universe even where we lack
-the text — but that also means some high-authority nodes are unsearchable.</p>
-
-<p><strong>The treatment classifier cannot read a denial.</strong> It matches
-surface cues, so “We are <em>unable to hold</em> that the decision in <em>Rajesh
-v. State</em> <em>stands overruled</em>” contains the cue for an overruling inside
-an explicit refusal to overrule, and is mis-labelled. A case that was upheld then
-loses three quarters of its <code>g(d)</code>. On our hand-labelled sample of
-<span class="ph">[TREAT_N]</span> edges the classifier is right
-<span class="ph">[TREAT_ACC]</span> of the time, and
-<span class="ph">[NEG_ERR]</span> of its errors are negated, conditional or
-hypothetical cues of exactly this kind. The fix is a negation and modality
-<em>scope</em> around the cue, not a longer phrase list; until it lands, the flag
-is visible in the interface together with the sentence that caused it, so a user
-can overrule the system.</p>
-
-<p><strong>Name-based citation resolution is the weakest link in the graph.</strong>
-Neutral and SCR citations resolve cleanly; a Jaccard threshold over party names
-does not, and Indian case names repeat heavily (<em>State of Maharashtra v. …</em>
-appears constantly). Every edge records <code>resolved_by</code>, so the damage is
-measurable, but it is real.</p>
-
-<p><strong>Extraction loss.</strong> Older judgments are scans. Pages under 200
-words are treated as images and the document is dropped, which biases the indexed
-corpus towards the typeset era within each year’s quota.</p>
-
-<p><strong>One judge, one assessor pool.</strong> The relevance judgments come
-from one person on the team. They were made blind to system identity, but they
-are not independent, and <span class="ph">[N_QUERIES]</span> queries is a small
-test set. Differences of a few points in §5.1 should not be read as real.</p>
-
-<p><strong>No High Courts, no statutes as documents.</strong> Precedent in
-practice runs through High Court decisions and the bare text of the statutes
-themselves; we index neither.</p>
-
-<table class="avoid">
-  <caption>Table 4 — roadmap.</caption>
-  <thead><tr><th style="width:11%">Horizon</th><th style="width:42%">Work</th><th>Why it is next</th></tr></thead>
-  <tbody>
-    <tr><td><strong>Next</strong></td><td>Negation and modality scope around treatment cues: a small dependency window, so “unable to hold” cancels the match</td><td>The single largest source of wrong labels — and a wrong label is worse than a missing one, because it demotes good law</td></tr>
-    <tr><td><strong>Next</strong></td><td>Per-query confidence intervals and a significance test over the judged set</td><td>Several §5.1 gaps are probably not real; saying so is cheap and honest</td></tr>
-    <tr><td><strong>Then</strong></td><td>Replace the cue classifier with a supervised model over the hand-labelled set, keeping the cues as features</td><td>Turns our test set into training data, with a fresh held-out set</td></tr>
-    <tr><td><strong>Then</strong></td><td>Lift the per-year cap for the years the query set actually touches, then for everything</td><td>Directly raises the §5.2 ceiling</td></tr>
-    <tr><td><strong>After</strong></td><td>Index High Court judgments and bare statutes; add a <em>cited-by</em> browse view over the treatment graph</td><td>The graph is already the right shape for it; this is what makes it a tool rather than a demo</td></tr>
-    <tr><td><strong>After</strong></td><td>Learned ranking over the existing features (zone scores, proximity, <code>g(d)</code>, bench, recency) once the judged set can support it</td><td>Our α and β are hand-set; they should be fit, not chosen</td></tr>
-  </tbody>
+<p>S3 and S4 are level here too, as on Track A, and for the same reason. Four things
+have to be said next to those numbers rather than in a footnote.</p>
+<p><strong>45.2% of the gold is unretrievable by construction.</strong> Of 28,028 resolved
+citations only 15,358 (54.8%) survived the ≤200-per-year sample, so recall here
+measures our ranking <em>and</em> our sampling together. It is a lower bound in a second
+way too: being cited is not the same as being the only relevant precedent, so a
+system returning an excellent <em>uncited</em> case is scored wrong for it.</p>
+<p><strong>The gold set is built from citations and authority ranks by citations, so S3 and
+S4 have a structural advantage.</strong> That objection is real, so we bounded it rather
+than argued with it. <strong>G0</strong> ranks by <code>g(d)</code> alone and never reads the query at
+all; whatever it scores is the floor the authority-bearing systems must be read
+against, and in every build so far it has been a small fraction of S3. Authority
+alone is close to useless on this track — it is the text scorer doing the work
+and authority ordering what the text scorer found.</p>
+<p><strong>The query must not leak the answer.</strong> 5,613 citations, 3,482 case names and
+3,565 cue sentences are masked from every query, and the masking is audited for
+<em>distinctive</em> leakage (df ≤ 100) rather than for any shared word: the audit finds
+<strong>0.00%, 0 of 1,222 gold pairs</strong>. The 6.4% of pairs sharing an ordinary word like
+"income" are not the answer leaking and cannot be stripped without destroying the
+query.</p>
+<p><strong>S1 and S2 fall below the baseline here and we leave that visible</strong> — stop-listing
+plus zone weighting costs recall on long, paragraph-shaped queries, and BM25F at
+S2′ recovers it and more. Finally, <strong>wiring the champion lists into live search
+cost this track nothing</strong>: across all six systems not one query lost R@10 or R@50.
+A speed optimisation not paid for in recall is rare enough to report.</p>
+<h3>5.3 Operator correctness</h3>
+<p><strong>94 checks</strong> — 10 Boolean, 14 phrase, 50 <code>/n</code> across <em>k</em> ∈ {1, 3, 5, 10, 25},
+10 <code>/s</code> and 10 <code>/p</code> — run over 1,200 judgments sampled every 11th document so the
+span is 1950–2025. Each is checked two ways.</p>
+<p><strong>Against an independent naive implementation: 94 of 94, 100.00%.</strong> The token
+stream is rebuilt from raw text and scanned with nested loops — no postings, no
+skip pointers, no numpy merge, no planner — and the two result <em>sets</em> must be
+identical, not similar. Every family passes: Boolean 10/10, phrase 14/14, each
+<code>/n</code> width 10/10, <code>/s</code> 10/10, <code>/p</code> 10/10. Pass-or-fail, and the one number in the
+project allowed to be boring.</p>
+<p><strong>Against a raw-text regex: 2,740 of 2,888 document decisions agree, 94.88%</strong>, and
+all 148 differences are classified with <strong>zero unexplained</strong>: 135 stemming
+conflation, where the index matches <code>convicted</code> for <code>convict</code> because Porter says
+so (including honest over-conflation — <code>negligence → neglig</code> also matches
+<code>negligible</code>); 9 the regex's own over-match, where a crude <code>bail\w{0,3}</code> catches
+<em>bailiff</em>; 3 token-count differences over numerals; 1 adjacency across OCR junk.
+We give both figures because the per-<em>check</em> regex number (27 of 44) overstates
+the disagreement badly — a check differing on one document of 1,092 counts the
+same as one differing on all of them.</p>
+<h3>5.4 Efficiency</h3>
+<p><strong>We report the algorithmic reduction, not an end-to-end speed-up, and the reason
+matters.</strong> Three runs of <em>identical code</em> gave monotonically falling wall clock as
+the operating system's page cache warmed — B0 went 6.18 → 5.22 → 4.00 ms — while
+the algorithmic columns were identical every time. Any latency ratio we quoted
+would be measuring the page cache rather than the champion lists, so we do not
+quote one. What the optimisation does is exact and reproducible:</p>
+<table>
+<thead>
+<tr>
+<th>Quantity, 20 queries, k = 10</th>
+<th>Exhaustive</th>
+<th>Tier 1</th>
+<th>Reduction</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>candidates, p50</td>
+<td>12,548</td>
+<td>1,059</td>
+<td>11.8× fewer</td>
+</tr>
+<tr>
+<td>documents scored, p50</td>
+<td>8,032</td>
+<td>1,030</td>
+<td>7.8× fewer</td>
+</tr>
+<tr>
+<td>documents scored, whole set</td>
+<td>159,328</td>
+<td>17,718</td>
+<td><strong>8.99× fewer</strong></td>
+</tr>
+</tbody>
 </table>
-
-<h2>7&ensp;Work division</h2>
-<p>Interfaces were frozen at kick-off in <code>nyaya/contracts.py</code>, together
-with the constants in <code>nyaya/config.py</code>, and the three of us built
-against them in parallel. Ownership is file-level: nobody edits a module they do
-not own.</p>
-
-<table class="avoid">
-  <caption>Table 5 — who built what.</caption>
-  <thead><tr><th style="width:11%"></th><th style="width:30%">Rakshit (M1)</th><th style="width:30%">Suvrat (M2)</th><th>Sumedha (M3)</th></tr></thead>
-  <tbody>
-    <tr><td><strong>Corpus</strong></td><td>download, PDF extraction, zoning, paragraph segmentation, extract log</td><td>metadata join, universe and manifest, stratified sample</td><td>—</td></tr>
-    <tr><td><strong>Index</strong></td><td>SPIMI build, zoned positional postings, skip pointers, memory-mapped store (S3)</td><td>parametric index (S2), champion lists and tiers (S5)</td><td>paragraph store (S1), collection statistics</td></tr>
-    <tr><td><strong>Query</strong></td><td>proximity operators <code>/n /s /p</code>, phrase matching</td><td>df-ordered Boolean planner, index elimination, filter folding</td><td>query language, parser, normaliser, root expansion</td></tr>
-    <tr><td><strong>Ranking</strong></td><td>proximity contribution, snippets</td><td>citation graph, treatment-weighted PageRank, <code>g(d)</code>, net score, heap</td><td>lnc.ltc cosine, weighted zone scoring, BM25F, “why this result”</td></tr>
-    <tr><td><strong>Beyond IR</strong></td><td>cue-phrase treatment classifier</td><td>citation extraction and resolution</td><td>statute canonicaliser, IPC↔BNS crosswalk, Precedent Brief and verifier</td></tr>
-    <tr><td><strong>Evaluation</strong></td><td>evaluation harness, metrics (P@k, R@k, MAP, nDCG), relevance judging</td><td>citation-recovery and efficiency tracks</td><td>query-set curation, operator correctness tests</td></tr>
-    <tr><td><strong>Delivery</strong></td><td>video production</td><td>report assembly</td><td>CLI and interface, diagrams and script</td></tr>
-  </tbody>
+<p>Latency is reported as a range rather than a ratio: <strong>4–7 ms warm p50 across all
+six systems</strong>, with a cold start of 1.2–1.5 s to memory-map the stores and about
+1 s for the first query. Two exact structures sit underneath: df-ordered Boolean
+planning, and a heap for the top <em>k</em> instead of a full sort. Both are lossless.
+<strong>Index elimination</strong> removes 16.5% of the documents scored (132,206 → 110,396)
+for top-10 identical on 16 of 20 queries and a mean overlap of 0.985.</p>
+<p><strong>The two-tier index is the only non-safe optimisation in the system, so its
+fidelity is printed beside its gain.</strong> On the shipped path, S4, 20 queries:</p>
+<table>
+<thead>
+<tr>
+<th></th>
+<th>value</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td>documents scored</td>
+<td>159,328 → 17,718 (8.99× fewer)</td>
+</tr>
+<tr>
+<td>top-10 identical</td>
+<td><strong>18 / 20</strong>, mean overlap 0.990</td>
+</tr>
+<tr>
+<td>rank 1 unchanged</td>
+<td><strong>20 / 20</strong></td>
+</tr>
+<tr>
+<td>fell through to tier 2</td>
+<td>0 / 20</td>
+</tr>
+<tr>
+<td>worst case</td>
+<td><strong>9 / 10</strong>, twice in twenty (<em>unlawful activities prevention</em>)</td>
+</tr>
+<tr>
+<td>cost on the judged set</td>
+<td><strong>zero</strong> — nDCG@10, MAP and P@10 identical to four decimals with tiers on and off, in all three authority modes</td>
+</tr>
+</tbody>
 </table>
-
-<p>Shared and append-only: <code>config.py</code>, <code>contracts.py</code>,
-<code>utils.py</code>, <code>README.md</code>. Every component has at least one
-readable test in <code>tests/</code>, and every component can print an
-intermediate output on demand — postings, plan, weights, scores — which is both a
-debugging contract and what the demo video shows.</p>
-
-<section class="declaration">
-<h2>AI-use declaration</h2>
+<p>Our offline harness reports the same optimisation as 12/20 identical with a 3/10
+worst case. The difference is a real path difference, not noise: the harness
+builds candidates from <code>scoring_terms</code>, so <em>appellate jurisdiction of the supreme
+court</em> collapses to the single term <code>suprem</code> and tier 1 is that one term's 400
+champions, whereas <code>search()</code> builds from <code>free_terms</code> and tier 1 is a union of
+six. We report the shipped numbers <em>and</em> name the harness arm rather than quietly
+keeping the better of the two. Across three runs the tier wall-clock gain ranged
+<strong>3.2×–4.2×</strong>, which is why we lead with the document count.</p>
+<h3>5.5 Precedent Brief verification</h3>
+<p><strong>The Precedent Brief ships extractive, and the output says so on every brief.</strong>
+No LLM API key was available in this environment — <code>ANTHROPIC_API_KEY</code> and
+<code>OPENAI_API_KEY</code> are both unset and the <code>anthropic</code> SDK is not installed — so the
+abstractive composer, although written and prompt-complete, <strong>has never been
+executed</strong>. We would rather ship a working extractive feature with an honest
+boundary than claim an LLM result we cannot reproduce. Across six real briefs:
+6 sentences drawn from 8 paragraphs across 4–5 judgments, every sentence carrying
+a paragraph id, 0 flagged, 200–1,000 ms.</p>
+<p><strong>The verifier is measured against deliberate fabrications, not asserted.</strong> 36
+real extractive sentences score a tf-idf cosine of 0.9924–1.0000 against the
+paragraph they cite; 18 fabrications written to defeat it score 0.0866–0.8451. At
+the shipped threshold of 0.20 it catches <strong>4 of the 18, with 0 false alarms on
+the 36 real sentences</strong> — and we state that as a limitation rather than a
+feature. It reliably catches the <em>mechanical</em> failures (no citation, or a
+citation outside the evidence pack) but not a confident on-topic falsehood:
+<em>"The right to privacy was expressly held to be subordinate to the right to
+property"</em> scores 0.8451 and passes. <strong>A bag-of-words cosine is a topicality
+check, not an entailment check.</strong> We did not raise the threshold to 0.90 to
+flatter the number, because that would reject a genuine paraphrase the moment the
+abstractive composer is enabled; a test pins the limitation, and says in its
+docstring that if it ever fails the verifier improved and these numbers need
+replacing.</p>
+<h3>5.6 Ablations — what the domain engineering is actually worth</h3>
+<p>One flag off at a time, 20 test queries, mode S4. This is the clearest evidence
+in the project that the <em>vertical</em> work, rather than the generic IR machinery, is
+what earns the result.</p>
+<table>
+<thead>
+<tr>
+<th>Arm</th>
+<th>What is off</th>
+<th>nDCG@10</th>
+<th>Δ</th>
+<th>MAP</th>
+<th>P@10</th>
+<th>Vocabulary</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>full</strong></td>
+<td>— the shipped analyser</td>
+<td><strong>0.8786</strong></td>
+<td>—</td>
+<td>0.5473</td>
+<td>0.933</td>
+<td>544,787</td>
+</tr>
+<tr>
+<td>nostem</td>
+<td>Porter stemming, both sides</td>
+<td>0.8669</td>
+<td>−0.0117</td>
+<td>0.5137</td>
+<td>0.873</td>
+<td>618,852</td>
+</tr>
+<tr>
+<td><strong>nocanon</strong></td>
+<td>statute canonicalisation</td>
+<td><strong>0.7582</strong></td>
+<td><strong>−0.1205</strong></td>
+<td>0.4631</td>
+<td>0.783</td>
+<td>539,096</td>
+</tr>
+<tr>
+<td>noinherit</td>
+<td>act inheritance, body zone</td>
+<td>0.8670</td>
+<td>−0.0116</td>
+<td>0.5473</td>
+<td>0.933</td>
+<td>544,843</td>
+</tr>
+</tbody>
+</table>
+<p><strong>Statute canonicalisation is worth ten times what stemming is worth</strong>, and the
+loss lands exactly where the mechanism is supposed to be working — on the
+statute-anchored queries. q23 collapses from 0.7761 to <strong>0.0000</strong>, q14 from
+0.9545 to 0.2440, q15 from 0.8128 to 0.4053. Without <code>ipc§302</code> as a single token
+those queries have nothing to match on, which is the vocabulary-mismatch problem
+of §1 reappearing as a measurement. Stemming, by contrast, buys +0.0117 nDCG@10
+and a <strong>14.5% smaller vocabulary</strong> — useful, and an order of magnitude less
+important.</p>
+<p>Two honesty notes on this table. <code>noinherit</code> is a <strong>partial</strong> ablation: it is
+query-side only, because the statutes zone is synthesised from tokens computed at
+ingest time, so a complete arm needs a re-ingest — the code says so where it is
+implemented, and §6 describes the silent no-op we had to fix before this row
+meant anything at all. And the vocabulary column should not be read below about
+100 types: the build is not bit-deterministic, so <code>noinherit</code>'s 56-type gap from
+<code>full</code> is noise rather than signal.</p>
+<hr>
+<h2>6 Limitations and next steps</h2>
+<p><strong>The sample caps recall, and we do not hide it.</strong> We index 13,878 of 37,210
+judgments. A precedent that was not sampled cannot be retrieved, which puts a
+hard ceiling on §5.2 and depresses recall on any query whose best answer happens
+to fall outside the draw. The citation <em>graph</em> covers all 42,371 nodes, so
+authority is computed over the full universe even where we lack the text — but
+that also means some high-authority nodes are unsearchable.</p>
+<p><strong>The treatment classifier cannot read a denial.</strong> It matches surface cues, so
+"We are <strong>unable to hold</strong> that the decision in <em>Rajesh v. State</em> <strong>stands
+overruled</strong>" contains the cue for an overruling inside an explicit refusal to
+overrule, and is mis-labelled. A case that was upheld then loses three quarters
+of its <code>g(d)</code>. On our hand-labelled sample of <strong>40</strong> edges the classifier is right <strong>92.5%</strong> of
+the time (37 of 40), and <strong>all three</strong> of its errors are an edge the citing court
+merely <em>mentioned</em> being read as something stronger on a nearby cue. Per class it
+is perfect on <em>distinguished</em> and on <em>mentioned</em> precision; <em>overruled</em> precision
+is 80% and <em>mentioned</em> recall is 77%, so everything it loses, it loses <strong>upward</strong>
+— into a label that demotes. That asymmetry is the worst possible direction for
+this error and it is why the next item on the roadmap is negation scope. The fix is a negation and
+modality <em>scope</em> around the cue, not a longer phrase list; until it lands, the
+flag is visible in the interface together with the sentence that caused it, so a
+user can overrule the system.</p>
+<p><strong>Bench size is sometimes a fallback rather than a reading.</strong> Re-parsing the
+CORAM line moved the recorded bench on 488 documents: 258 up, but <strong>230 down, 184
+of them to 1</strong>, where the re-parse refused to validate a bench line it could no
+longer read and the system fell back to the metadata's single authoring judge.
+<code>G_BENCH_WEIGHT</code> then reads those 184 as single-judge benches and weights them
+accordingly. We prefer "no claim plus a declared fallback" to "a confident wrong
+claim", but it is a real hole in a parametric field that <code>bench:&gt;=5</code> filters on.</p>
+<p><strong>OCR puts a visible floor under the bench parser.</strong> <em>Maneka Gandhi</em> (1978) is a
+seven-judge bench and our index records it as <strong>1</strong>, because its bench line OCRs
+as <code>M. H. BEG, c. J.</code> with the other six judges on lines the parser never
+reaches. It is cosmetic for ranking — one document's bench term — but it is
+visible in the interface, and it is the honest face of a corpus whose older half
+is scanned paper.</p>
+<p><strong>Derived stores can silently go stale, and ours did.</strong> Two fixes were correct in
+the code and had still not reached the ranking, because a store downstream of them
+was older than the corpus it was derived from: Puttaswamy served <code>bench 1</code> from an
+S2 built before the bench re-parse, and <em>Maneka Gandhi</em> was still flagged
+<code>overruled</code> from an authority store built twenty-five minutes before the
+re-classification pass that fixed it. Nothing was wrong with either algorithm; the
+pipeline simply has five stores and no staleness check between them. Of every
+limitation in this section it is the most ordinary and, in a multi-stage index,
+the most likely to recur — so the roadmap carries a build-stamp check and we say
+plainly that we were caught by it.</p>
+<p><strong>Bench size is sometimes a fallback rather than a reading, and it is not cheap.</strong>
+Re-parsing the CORAM line moved 488 documents: 258 up (163 of them from 1, so the
+re-parse is net-correcting) but <strong>230 down, 184 to 1</strong>, where it refused to
+validate a bench line it could not read and fell back to the metadata's single
+authoring judge. 999 of 13,942 documents (7.2%) record bench 1, roughly a quarter
+of them parse failures. The cost is quantifiable, which is what makes this a
+limitation rather than an untidiness: <code>bench_norm = min(bench,13)/13</code> with
+<code>G_BENCH_WEIGHT = 0.25</code> means each missing seat costs <strong>0.0192 of g(d)</strong>, so a
+five-judge bench read as 1 understates <code>g</code> by <strong>0.077</strong> and a thirteen-judge
+bench by <strong>0.231</strong> — against an <em>entire</em> overruled penalty of 0.289 on Pune
+Municipal Corporation. One mis-parsed Constitution Bench moves authority by the
+same order as being overruled. <em>Maneka Gandhi</em> (1978) is the visible case: seven
+judges recorded as <strong>1</strong>, because its bench line OCRs as <code>M. H. BEG, c. J.</code> and
+the parser never reaches the other six.</p>
+<p><strong>Derived stores can go stale silently, and ours did, four times.</strong> Two fixes
+were correct in code and had still not reached the ranking because a downstream
+store was older than the corpus: Puttaswamy served <code>bench 1</code> from a parametric
+index built before the bench re-parse, and <em>Maneka Gandhi</em> was flagged
+<code>overruled</code> from an authority store built twenty-five minutes before the
+re-classification that fixed it. A third was a stale <em>assertion</em> rather than
+stale data — <code>runs/efficiency.json</code> still said "S5 is NOT yet wired into
+<code>search()</code>" after that became false, and it would have entered this report as a
+falsehood. The sharpest was an ablation arm that <em>silently did nothing</em>: the
+act-inheritance arm reproduced the shipped numbers to five decimals, which reads
+as "inheritance does not matter" and meant the flag was never off. Two
+independent causes — a <code>flag: bool = INHERIT_ACT_DEFAULT</code> default argument is
+bound at <strong>import</strong>, so reassigning the module constant changed nothing; and the
+builder fans out over <code>ProcessPoolExecutor</code>, which on Windows spawns by
+re-importing, so a parent-process flip never reaches a worker. Fixed with
+call-time resolution and an environment variable, and pinned by a test that runs
+a <strong>real child process</strong>, because no in-process test can see that class of bug.
+The arm is still a <em>partial</em> ablation and says so in the code.</p>
+<p>All four share one lesson, and it is the one we would most want a reader to take
+from this project: <strong>in a multi-stage index pipeline, a correct fix that never
+reaches the derived stores is indistinguishable from no fix at all.</strong> No unit
+test would have caught any of them, because each was a <em>build</em> failure wearing
+the costume of a <em>result</em>.</p>
+<p><strong>The index build is not bit-deterministic</strong> — two builds from identical inputs
+gave vocabularies differing by 36 and 56 types, so §5.6's vocabulary column
+should not be read below about 100.</p>
+<p><strong>Name-based citation resolution is the weakest link in the graph.</strong> Neutral and
+SCR citations resolve cleanly; a Jaccard threshold over party names does not, and
+Indian case names repeat heavily (<em>State of Maharashtra v. …</em>). Every edge
+records <code>resolved_by</code>, so the damage is measurable — but it is real.</p>
+<p><strong>Extraction loss.</strong> Older judgments are scans, and pages under 200 words are
+treated as images and dropped, biasing the indexed corpus towards the typeset era
+within each year's quota.</p>
+<p><strong>One judge, one assessor pool.</strong> The relevance judgments come from one person on
+the team: blind to system identity, but not independent, and 20 queries is a
+small test set. We answered that with a sign test and a bootstrap rather than a
+disclaimer — the B0→S4 gap survives both and we read it as real; the 0.005
+between S3 and S4 does not, and we do not.</p>
+<p><strong>The Precedent Brief's verifier is a topicality check, not an entailment check</strong>
+(§5.5), and the abstractive composer has never been run, because no model key was
+available here.</p>
+<p><strong>No High Courts, no statutes as documents</strong>, though precedent in practice runs
+through both. <strong>And one judge, one assessor pool</strong> — see above.</p>
+<h3>Roadmap</h3>
+<table>
+<thead>
+<tr>
+<th>Horizon</th>
+<th>Work</th>
+<th>Why it is next</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><strong>Next</strong></td>
+<td>Negation and modality scope around treatment cues — a dependency window, so "unable to hold" cancels the match</td>
+<td>The largest source of wrong labels, and a wrong label demotes good law</td>
+</tr>
+<tr>
+<td><strong>Next</strong></td>
+<td>A build-stamp check between the five derived stores</td>
+<td>§6: all four of our worst bugs were a store older than its input</td>
+</tr>
+<tr>
+<td><strong>Then</strong></td>
+<td>Supervised treatment classifier over the hand-labelled set, keeping the cues as features</td>
+<td>Turns our test set into training data, with a fresh held-out set</td>
+</tr>
+<tr>
+<td><strong>Then</strong></td>
+<td>Lift the per-year cap, first for the years the query set touches</td>
+<td>Directly raises the §5.2 ceiling, which is 45.2% unretrievable today</td>
+</tr>
+<tr>
+<td><strong>After</strong></td>
+<td>High Court judgments, bare statutes, and a <em>cited-by</em> browse over the treatment graph</td>
+<td>The graph is already the right shape; this makes it a tool, not a demo</td>
+</tr>
+<tr>
+<td><strong>After</strong></td>
+<td>Learned ranking over the existing features, once the judged set can support it</td>
+<td>α and β are hand-set; §2.10 shows 20 queries cannot yet fit them</td>
+</tr>
+</tbody>
+</table>
+<hr>
+<h2>7 Work division</h2>
+<p>Interfaces were frozen at kick-off in <code>nyaya/contracts.py</code> with the constants in
+<code>nyaya/config.py</code>, and the three of us built against them in parallel. Ownership
+is file-level: nobody edits a module they do not own.</p>
+<p><strong>Rakshit (M1)</strong> — download, PDF extraction, zoning, paragraph segmentation and
+the extract log; the SPIMI build, zoned positional postings, skip pointers and
+the memory-mapped S3 store; proximity operators <code>/n</code> <code>/s</code> <code>/p</code> and phrase
+matching; the proximity contribution and snippets; the cue-phrase treatment
+classifier; the evaluation harness and its metrics (P@k, R@k, MAP, nDCG) and the
+relevance judging; video production.</p>
+<p><strong>Suvrat (M2)</strong> — the metadata join, universe and manifest, and the stratified
+sample; the parametric index (S2) and the champion lists and tiers (S5); the
+df-ordered Boolean planner, index elimination and filter folding; citation
+extraction and resolution, the treatment-weighted PageRank, <code>g(d)</code>, the net score
+and the heap; the citation-recovery and efficiency tracks; report assembly.</p>
+<p><strong>Sumedha (M3)</strong> — the paragraph store (S1) and collection statistics; the query
+language, parser, normaliser and root expansion; lnc.ltc cosine, weighted zone
+scoring, BM25F and "why this result"; the statute canonicaliser, the IPC↔BNS
+crosswalk, and the Precedent Brief with its verifier; query-set curation and the
+operator correctness tests; the CLI, the Streamlit page, the diagrams and script.</p>
+<p>Shared and append-only: <code>config.py</code>, <code>contracts.py</code>, <code>utils.py</code>, <code>README.md</code>.
+Every component has a readable test in <code>tests/</code> and can print an intermediate
+output on demand — postings, plan, weights, scores — which is both a debugging
+contract and what the demo video shows, end to end, as live terminal output.</p>
+<hr>
+<div class="declaration"><h2>AI-use declaration</h2>
 <p>This project was built with AI coding agents. The assignment permits that on
 condition it is declared, so it is declared here specifically.</p>
-
-<h3>What the AI did</h3>
-<p>Most of the implementation code in <code>nyaya/</code>, the tests in
-<code>tests/</code>, the Remotion video project in <code>video/</code>, and the
-first draft of this report were written by <strong>Claude Code
-(Anthropic)</strong> agents working under our direction, in parallel, each
-confined to the files its owner is responsible for.</p>
-
-<h3>What we did</h3>
-<p>We chose the problem and the track. We designed the architecture: the six zones
-and their weights, the mode ladder B0→S4, the treatment-weighted authority model
-and the decision to separate edge weight from status penalty, the net-score
-formula, and the decision to build vectorless RAG with a verifier rather than add
-an embedding store. We wrote and froze the interface contracts in
-<code>nyaya/contracts.py</code> and the constants in <code>nyaya/config.py</code>
-before any implementation began, and the agents were required to build against
-them. We set the corpus policy — the universe/indexed-subset split, the
-≤200-per-year stratified sample, the seed — and accepted its cost to recall. We
-designed the evaluation: which systems to compare, which metrics, pooled judging,
-the two automatic tracks, and the rule that an ablation which does not help gets
-reported anyway. We wrote the relevance judgments ourselves; no model graded its
-own output. We reviewed the generated code, ran it on the real corpus rather than
-on stubs, and are answerable for every claim in this report.</p>
-
-<h3>What the AI did not do</h3>
-<p>It did not choose the architecture, the corpus policy or the evaluation design.
-It did not produce the relevance judgments. It did not produce any number in §5 —
-those come from running the harness, and until they do they are visible
-placeholders.</p>
-
-<h3>Tooling</h3>
-<p>Claude Code (Anthropic) for implementation, tests, the video project and report
-drafting. Standard libraries only for the IR core: NumPy for the postings arrays
-and the power iteration, pandas and PyArrow for the metadata, a PDF text extractor
-for ingest. No search engine, no graph library, no embedding model, no ranking
-library — the index, the merges, the scorers and the PageRank are ours.</p>
-</section>
-
+<p><strong>What the AI did.</strong> Most of the implementation code in <code>nyaya/</code>, the tests in
+<code>tests/</code>, the Remotion video project in <code>video/</code> and the first draft of this
+report were written by Claude Code (Anthropic) agents under our direction, in
+parallel, each confined to the files its owner is responsible for.</p>
+<p><strong>What we did.</strong> We chose the problem and the track. We designed the
+architecture: the six zones and their weights, the mode ladder B0→S4, the
+treatment-weighted authority model and the decision to separate edge weight from
+status penalty, the net-score formula, and the decision to build vectorless RAG
+with a verifier rather than add an embedding store. We wrote and froze the
+interface contracts in <code>nyaya/contracts.py</code> and the constants in
+<code>nyaya/config.py</code> before any implementation began, and the agents were required
+to build against them. We set the corpus policy — the universe/indexed-subset
+split, the ≤200-per-year stratified sample, the seed — and accepted its cost to
+recall. We designed the evaluation: which systems to compare, which metrics,
+pooled judging, the two automatic tracks, and the rule that an ablation which
+does not help gets reported anyway. We wrote the relevance judgments ourselves;
+no model graded its own output. We reviewed the generated code, ran it on the
+real corpus rather than on stubs, and are answerable for every claim in this
+report.</p>
+<p><strong>What the AI did not do.</strong> It did not choose the architecture, the corpus policy
+or the evaluation design, and it did not produce the relevance judgments. It did
+not invent any number in §5: every figure there is the output of a command named
+in Appendix A, run on the real corpus. Where a measurement was unavailable the
+report carried a visible placeholder until the command had been run — none
+remain.</p>
+<p><strong>Tooling.</strong> Claude Code (Anthropic) for implementation, tests, the video project
+and report drafting. Standard libraries only for the IR core: NumPy for the
+postings arrays and the power iteration, pandas and PyArrow for the metadata, a
+PDF text extractor for ingest. No search engine, no graph library, no embedding
+model, no ranking library — the index, the merges, the scorers and the PageRank
+are ours.</p>
+<hr>
+</div>
 <h2 class="page-break">References</h2>
 <ol class="refs">
-<li>C. D. Manning, P. Raghavan &amp; H. Schütze. <em>Introduction to Information Retrieval.</em> Cambridge University Press, 2008. — SPIMI, skip pointers, lnc.ltc, zone scoring, champion lists, tiered indexes, index elimination.</li>
-<li>S. Robertson &amp; H. Zaragoza. <em>The Probabilistic Relevance Framework: BM25 and Beyond.</em> Foundations and Trends in Information Retrieval 3(4), 2009. — BM25 and the BM25F field-combination rule.</li>
-<li>L. Page, S. Brin, R. Motwani &amp; T. Winograd. <em>The PageRank Citation Ranking: Bringing Order to the Web.</em> Stanford InfoLab, 1999.</li>
-<li>K. Järvelin &amp; J. Kekäläinen. <em>Cumulated Gain-based Evaluation of IR Techniques.</em> ACM TOIS 20(4), 2002. — nDCG.</li>
-<li>M. F. Porter. <em>An Algorithm for Suffix Stripping.</em> Program 14(3), 1980.</li>
-<li>Indian Supreme Court Judgments. AWS Open Data Registry, CC-BY-4.0.</li>
-<li>The Bharatiya Nyaya Sanhita, 2023 (in force 1 July 2024). — the IPC↔BNS section mapping.</li>
+<li>Manning, Raghavan &amp; Schütze, <em>Introduction to Information Retrieval</em>, CUP 2008 — SPIMI, skip pointers, lnc.ltc, zone scoring, champion lists, tiered indexes, index elimination.</li>
+<li>Robertson &amp; Zaragoza, <em>The Probabilistic Relevance Framework: BM25 and Beyond</em>, Foundations and Trends in IR 3(4), 2009 — BM25 and the BM25F field-combination rule.</li>
+<li>Page, Brin, Motwani &amp; Winograd, <em>The PageRank Citation Ranking: Bringing Order to the Web</em>, Stanford InfoLab, 1999.</li>
+<li>Järvelin &amp; Kekäläinen, <em>Cumulated Gain-based Evaluation of IR Techniques</em>, ACM TOIS 20(4), 2002 — nDCG.</li>
+<li>Porter, <em>An Algorithm for Suffix Stripping</em>, Program 14(3), 1980.</li>
+<li>Indian Supreme Court Judgments, AWS Open Data Registry, CC-BY-4.0.</li>
+<li>The Bharatiya Nyaya Sanhita, 2023 (in force 1 July 2024) — the IPC↔BNS section mapping.</li>
 </ol>
-
 <h2>Appendix A — reproducing the results</h2>
-<pre><code>python -m nyaya.build --download --extract --index     # corpus and S1-S5
-python -m pytest tests -q                              # all component tests
-python -m nyaya.cli --smoke                            # end-to-end smoke test
-python -m nyaya.eval.run --systems B0,S1,S2,S2p,S3,S4 --qrels eval/queries
-python -m nyaya.eval.operators --brute-force
-python -m nyaya.eval.recovery
-python -m nyaya.eval.efficiency</code></pre>
-<p class="small">Outputs land in <code>runs/</code> as CSV, JSON and PNG.
-<code>config.SAMPLE_SEED = 358</code> fixes the corpus draw, so a rebuild
-reproduces the same indexed subset.</p>
+<p>Every number in this report comes from one of these, and each writes its result
+into <code>runs/</code>. Set <code>PYTHONIOENCODING=utf-8</code> first, or the statute tokens print as
+boxes.</p>
+<pre><code class="language-bash">python -m nyaya.build --download --extract --index   # corpus and S1-S5
+python -m pytest tests -q                            # all component tests
+python -m nyaya.cli --smoke                          # end-to-end smoke test
 
+python -m nyaya.index.stats --no-growth              # §1, §2.3  corpus_stats.json
+python -m nyaya.authority.citations stats            # §3.2    citations_stats.json
+python -m nyaya.cli --treatment-audit --only-errors  # §3.3, §6
+python -m nyaya.authority.pagerank compare           # §3.4    the g(d) that moved
+python -m nyaya.rank.tune --report-test              # §2.10   tuning.json
+python -m nyaya.eval.run                             # §5.1    trackA.json
+python -m nyaya.eval.citation_recovery run           # §5.2    citation_recovery.json
+python -m nyaya.eval.citation_recovery report
+python -m nyaya.eval.operators --brute-force         # §5.3    operators.json
+python -m nyaya.eval.efficiency run                  # §5.4    efficiency.json
+python -m nyaya.eval.efficiency report
+python -m nyaya.cli --brief &quot;&lt;query&gt;&quot;                # §5.5
+python -m nyaya.rank.ablate --run                    # §5.6    ablations.json
+</code></pre>
+<p><code>config.SAMPLE_SEED = 358</code> fixes the corpus draw, so a rebuild reproduces the same
+indexed subset — though not byte for byte: see the determinism note in §6. The
+two <code>report</code> subcommands re-print a finished run without recomputing it, which is
+what the demo video records; if the derived stores have been rebuilt since, run
+the matching <code>run</code> subcommand first or the report will print stale numbers.</p>
 <h2>Appendix B — query language reference</h2>
-<table class="avoid">
-  <thead><tr><th style="width:36%">Form</th><th>Meaning</th></tr></thead>
-  <tbody>
-    <tr><td><code>murder bail</code></td><td>free text; fast path through tier 1</td></tr>
-    <tr><td><code>"common intention"</code></td><td>exact phrase</td></tr>
-    <tr><td><code>privacy /5 dignity</code></td><td>within five words</td></tr>
-    <tr><td><code>privacy /s dignity</code></td><td>same sentence</td></tr>
-    <tr><td><code>privacy /p dignity</code></td><td>same paragraph</td></tr>
-    <tr><td><code>bail!</code></td><td>root expansion by dictionary prefix</td></tr>
-    <tr><td><code>title:(privacy)</code></td><td>restrict to one zone</td></tr>
-    <tr><td><code>year:&gt;=2000</code>, <code>bench:&gt;=5</code></td><td>parametric filters</td></tr>
-    <tr><td><code>judge:chandrachud</code>, <code>act:IPC</code>, <code>type:criminal</code></td><td>parametric filters</td></tr>
-    <tr><td><code>X AND Y</code>, <code>X OR Y</code>, <code>X NOT Y</code></td><td>Boolean; <code>NOT</code> is a set difference, never a bare negation</td></tr>
-  </tbody>
+<table>
+<thead>
+<tr>
+<th>Form</th>
+<th>Meaning</th>
+</tr>
+</thead>
+<tbody>
+<tr>
+<td><code>murder bail</code></td>
+<td>free text; fast path through tier 1</td>
+</tr>
+<tr>
+<td><code>"common intention"</code></td>
+<td>exact phrase</td>
+</tr>
+<tr>
+<td><code>privacy /5 dignity</code></td>
+<td>within five words</td>
+</tr>
+<tr>
+<td><code>privacy /s dignity</code></td>
+<td>same sentence</td>
+</tr>
+<tr>
+<td><code>privacy /p dignity</code></td>
+<td>same paragraph</td>
+</tr>
+<tr>
+<td><code>bail!</code></td>
+<td>root expansion by dictionary prefix</td>
+</tr>
+<tr>
+<td><code>title:(privacy)</code></td>
+<td>restrict to one zone</td>
+</tr>
+<tr>
+<td><code>year:&gt;=2000</code>, <code>bench:&gt;=5</code></td>
+<td>parametric filters</td>
+</tr>
+<tr>
+<td><code>judge:chandrachud</code>, <code>act:IPC</code>, <code>type:criminal</code></td>
+<td>parametric filters</td>
+</tr>
+<tr>
+<td><code>X AND Y</code>, <code>X OR Y</code>, <code>X NOT Y</code></td>
+<td>Boolean; <code>NOT</code> is a set difference, never a bare negation</td>
+</tr>
+</tbody>
 </table>
-
 </body>
 </html>
