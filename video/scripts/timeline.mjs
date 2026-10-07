@@ -29,10 +29,24 @@ segs.forEach((s, i) => {
 });
 
 const byKind = (k) => segs.filter((s) => s.kind === k).reduce((a, s) => a + s.seconds, 0);
+const n = (k) => segs.filter((s) => s.kind === k).length;
+const pct = (v) => `${((100 * v) / at).toFixed(1)}%`;
+// title + outro are animation, but they are chrome rather than concept inserts
+const CHROME = ['title', 'outro'];
+const chrome = segs.filter((s) => CHROME.includes(s.id)).reduce((a, s) => a + s.seconds, 0);
+const inserts = byKind('explain') - chrome;
+
 console.log('');
 console.log(`total        ${mmss(at)}  (${at}s, ${at * 30} frames at 30fps)`);
-console.log(`  animation  ${mmss(byKind('explain'))}  ${segs.filter((s) => s.kind === 'explain').length} segments`);
-console.log(`  screen     ${mmss(byKind('screen'))}  ${segs.filter((s) => s.kind === 'screen').length} slots`);
-console.log(`  webcam     ${mmss(byKind('cam'))}  ${segs.filter((s) => s.kind === 'cam').length} slots`);
+console.log(`  screen     ${mmss(byKind('screen'))}  ${pct(byKind('screen')).padStart(6)}  ${n('screen')} clips`);
+console.log(`  animation  ${mmss(byKind('explain'))}  ${pct(byKind('explain')).padStart(6)}  ${n('explain')} scenes`);
+console.log(`    inserts  ${mmss(inserts)}  ${pct(inserts).padStart(6)}  ${n('explain') - CHROME.length} concept inserts`);
+console.log(`    chrome   ${mmss(chrome)}  ${pct(chrome).padStart(6)}  title + outro`);
+console.log(`  webcam     ${mmss(byKind('cam'))}  ${pct(byKind('cam')).padStart(6)}  ${n('cam')} clips`);
+
+const long = segs.filter((s) => s.kind === 'explain' && !CHROME.includes(s.id) && (s.seconds < 12 || s.seconds > 25));
+if (long.length) console.log(`\n!  insert outside the 12-25s window: ${long.map((s) => s.id).join(', ')}`);
+const screenShare = (100 * byKind('screen')) / at;
+if (screenShare < 55 || screenShare > 65) console.log(`\n!  screen share ${screenShare.toFixed(1)}% is outside the 55-65% target`);
 if (at < 300 || at > 480) console.log('\n!! outside the 5:00-8:00 limit');
 else if (at < 420 || at > 450) console.log('\n!  outside the 7:00-7:30 target (still legal)');

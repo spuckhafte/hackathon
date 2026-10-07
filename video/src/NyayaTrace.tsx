@@ -8,18 +8,9 @@ import {Title} from './scenes/Title';
 import {ThreeWays} from './scenes/ThreeWays';
 import {Anatomy} from './scenes/Anatomy';
 import {OverruledTrap} from './scenes/OverruledTrap';
-import {PipelineMap} from './scenes/PipelineMap';
-import {StatuteCanon} from './scenes/StatuteCanon';
-import {ZonedPostings} from './scenes/ZonedPostings';
 import {ProximityWalk} from './scenes/ProximityWalk';
 import {BooleanPlan} from './scenes/BooleanPlan';
 import {Bm25f} from './scenes/Bm25f';
-import {CitationGraph} from './scenes/CitationGraph';
-import {NetScore} from './scenes/NetScore';
-import {EvalLadder} from './scenes/EvalLadder';
-import {OperatorAndSpeed} from './scenes/OperatorAndSpeed';
-import {Limitation} from './scenes/Limitation';
-import {PrecedentBrief} from './scenes/PrecedentBrief';
 import {Outro} from './scenes/Outro';
 
 /** id -> animated scene. Every `explain` segment in the timeline needs an entry. */
@@ -28,18 +19,9 @@ const SCENES: Record<string, React.FC> = {
   'three-ways': ThreeWays,
   anatomy: Anatomy,
   'overruled-trap': OverruledTrap,
-  'pipeline-map': PipelineMap,
-  'statute-canon': StatuteCanon,
-  'zoned-postings': ZonedPostings,
   'proximity-walk': ProximityWalk,
   'boolean-plan': BooleanPlan,
   bm25f: Bm25f,
-  'citation-graph': CitationGraph,
-  'net-score': NetScore,
-  'eval-ladder': EvalLadder,
-  'operator-speed': OperatorAndSpeed,
-  limitation: Limitation,
-  'precedent-brief': PrecedentBrief,
   outro: Outro,
 };
 
