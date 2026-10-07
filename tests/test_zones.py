@@ -525,3 +525,36 @@ def test_reparse_bench_downgrades_prose_to_unknown(tmp_path):
     assert out[1]["zones"]["bench"] == ""
     # the metadata-sourced record is left exactly as it was
     assert out[2]["judges"] == ["X", "Y", "Z"] and out[2]["bench_size"] == 3
+
+
+def test_a_judges_initial_is_not_the_end_of_the_bench_line():
+    """The nine-judge Puttaswamy bench opens 'JAGDISH SINGH KHEHAR, CJI,
+    J. CHELAMESWAR, ...' and the second judge's initial is 'J.'.  Treating that
+    as the line terminator read the largest bench in the demo as one judge."""
+    head = "\n".join([
+        "[2017] 10 S.C.R. 569",
+        "JUSTICE K S PUTTASWAMY (RETD.),",
+        "AND ANR.",
+        "v.",
+        "UNION OF INDIA AND ORS.",
+        "(Writ Petition (Civil) No. 494 of2012)",
+        "AUGUST 24, 2017",
+        "[JAGDISH SINGH KHEHAR, CJI, J. CHELAMESWAR,",
+        "S. A. BOBDE, R. K. AGRAWAL, R. F .. NARIMAN,",
+        "ABHAY MANOHAR SAPRE, DR. D. Y. CHANDRACHUD,",
+        "SANJAY KISHAN KAUL AND S. ABDUL NAZEER, JJ.]",
+        "Constitution of India - Art.21 - Right to privacy",
+    ])
+    h = zones.parse_header(head)
+    assert len(h.judges) == 9, h.judges
+    assert h.judges[0] == "JAGDISH SINGH KHEHAR"
+    assert h.judges[-1] == "S. ABDUL NAZEER"
+
+
+def test_a_genuine_single_judge_line_still_terminates_at_its_title():
+    for line, n in (("[Bela M. Trivedi, J.]", 1),
+                    ("[A. K. SIKRI, J.]", 1),
+                    ("[Dr. Dhananjaya Y. Chandrachud, CJI, J.B. Pardiwala,* J.]", 2)):
+        body, src = zones.find_bench(line)
+        assert src == "bracket", line
+        assert len(zones.parse_judges(body)) == n, (line, body)

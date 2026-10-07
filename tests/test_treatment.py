@@ -299,3 +299,92 @@ def test_sentence_boundaries_come_from_member_threes_splitter():
     assert len(spans) == len(sentences(window))
     for _s, _e, text in spans:
         assert text in window
+
+
+# --------------------------------------------------------------------------
+# Direction: the cue is present but does not predicate of the cited case
+# --------------------------------------------------------------------------
+
+MANEKA = (
+    "In this connection, reliance was placed on the observations of this Court "
+    "in E.P. Royappa v. State of Tamil Nadu, [1974] 2 SCR 348 and Maneka Gandhi "
+    "v. Union of India, [1978] 2 SCR 621 where it was held that the view that "
+    "Articles 19 and 21 constitute watertight compartments has been rightly "
+    "overruled."
+)
+
+
+def test_a_landmark_that_overruled_something_is_not_itself_overruled():
+    """Maneka Gandhi is live, foundational constitutional law and is famous for
+    overrul*ing*.  The cue's grammatical subject is the view Maneka rejected, so
+    labelling Maneka 'overruled' would print it in the report as dead law."""
+    lab = T.classify(MANEKA, "[1978] 2 SCR 621")
+    assert lab.treatment != T.OVERRULED
+    assert lab.treatment == T.MENTIONED
+
+
+@pytest.mark.parametrize("verb", ["held", "observed", "laid down", "stated",
+                                  "ruled", "found", "declared"])
+def test_every_reporting_verb_shields_the_cited_case(verb):
+    window = (f"Reliance was placed on X v. Y, [1978] 2 SCR 621 where it was "
+              f"{verb} that the earlier view was overruled.")
+    assert T.classify(window, "[1978] 2 SCR 621").treatment != T.OVERRULED
+
+
+@pytest.mark.parametrize("window, cite", [
+    ("Rao Shiv Bahadur Singh, [1954] S.C.R. 1098, overruled.",
+     "[1954] S.C.R. 1098"),
+    ("[1988] 3 SCR 73 overruled", "[1988] 3 SCR 73"),
+    ("Madhya Pradesh Industries Ltd., [1966] 1 S.C.R. 466 held overruled by "
+     "Bhagat Raja.", "[1966] 1 S.C.R. 466"),
+    ("The case of Firm Chhotabhai, [1953] SCR 476 is not good law and has been "
+     "overruled by larger benches.", "[1953] SCR 476"),
+    ("The decision in ADM, Jabalpur [(1976) 2 SCC 521] about the restrictive "
+     "reading of right to life stood impliedly overruled by subsequent "
+     "decisions.", "(1976) 2 SCC 521"),
+    ("Pune Municipal Corpn. v. Harakchand, (2014) 3 SCC 183 is hereby overruled "
+     "and all other decisions following it.", "(2014) 3 SCC 183"),
+    ("Krishna Veni Nagam v. Harish Nagam (2017) 4 SCC 150 - partly overruled.",
+     "(2017) 4 SCC 150"),
+])
+def test_the_direction_rule_keeps_every_genuine_overruling(window, cite):
+    """The rule must not buy precision by losing real overrulings: these seven
+    are the hand-checked genuine ones from the audit sample."""
+    assert T.classify(window, cite).treatment == T.OVERRULED
+
+
+def test_a_transitive_cue_whose_object_is_another_case_is_not_a_treatment():
+    window = ("This Court in All India Railway Recruitment Board v. K. Shyam "
+              "Kumar [(2010) 6 SCC 614] distinguished Mohinder Singh Gill's "
+              "case, stating that a larger public interest is involved.")
+    assert T.classify(window, "(2010) 6 SCC 614").treatment != T.DISTINGUISHED
+
+
+def test_but_a_cue_whose_object_is_the_cited_case_still_counts():
+    """'overrule Kesavananda [1973] 4 SCC 225' also has a capital after the cue,
+    and there the capitalised words ARE the cited case.  The direction of the
+    citation relative to the cue is what tells the two apart."""
+    lab = T.classify("A two-judge bench purported to overrule Kesavananda "
+                     "[1973] 4 SCC 225.", "[1973] 4 SCC 225",
+                     bench_src=2, bench_dst=13)
+    assert lab.raw == T.OVERRULED
+    assert lab.treatment == T.DISTINGUISHED      # the bench rule then downgrades
+
+
+def test_distinguished_in_its_ordinary_english_sense_is_not_a_treatment():
+    window = ("It allows a permissive inference of fact, as distinguished from "
+              "a mandatory presumption, having regard to 2021 (10) SCR 1118.")
+    assert T.classify(window, "2021 (10) SCR 1118").treatment != T.DISTINGUISHED
+
+
+def test_edge_key_is_stable_across_a_rebuild_but_not_across_a_window_change():
+    base = {"src": 1, "dst": 2, "cite_string": "[1978] 2 SCR 621",
+            "para_id": 7, "sentence": "some window"}
+    same_rebuilt = dict(base, treatment="overruled")      # a label is not part of it
+    assert T.edge_key(base) == T.edge_key(same_rebuilt)
+    # whitespace in the citation is normalised, so a re-wrapped line still matches
+    assert T.edge_key(dict(base, cite_string="[1978]  2\nSCR 621")) == \
+        T.edge_key(base)
+    # but a different evidence window is a different judgment to make
+    assert T.edge_key(dict(base, sentence="a different window")) != \
+        T.edge_key(base)

@@ -368,7 +368,15 @@ def parse_judges(bench_text: str) -> List[str]:
 #: truncated to one judge at the "C.J." in the first name.
 _END_JJ_RE = re.compile(r"\b" + _JJ_ALT + r"\s*\.")
 #: Singular "J." for a single-judge line, excluding the "J" of "C.J."/"CJ".
-_END_J_RE = re.compile(r"(?<![A-Za-z])(?<!C\.)J\s*\.")
+#: The singular "J." terminator, with the one lookahead that matters: a "J."
+#: followed by a capitalised word is a judge's *initial*, not the title at the end
+#: of the line.  Without it, the nine-judge Puttaswamy bench
+#:
+#:   [JAGDISH SINGH KHEHAR, CJI, J. CHELAMESWAR, S. A. BOBDE, ...  JJ.]
+#:
+#: was cut after "CJI, J." - because the next judge is J. Chelameswar - and the
+#: largest bench in the demo read as a single judge.
+_END_J_RE = re.compile(r"(?<![A-Za-z])(?<!C\.)J\s*\.(?!\s*[A-Z])")
 
 
 def _bench_end_candidates(window: str) -> List[int]:
@@ -1033,7 +1041,96 @@ def reparse_bench(src=None, dry_run: bool = False) -> Dict[str, object]:
         for row in rows:
             fh.write(json.dumps(row, ensure_ascii=False))
             fh.write("\n")
-    os.replace(tmp, src)
+    from nyaya.index.positional import _replace_with_retry
+
+    # On Windows os.replace fails while another member holds the
+    # corpus open; retry rather than discard a completed pass over
+    # 13,878 documents.
+    _replace_with_retry(tmp, src)
+    stats["written"] = str(src)
+    return stats
+
+
+
+def refind_bench(src=None, dry_run: bool = False, processes: int = 0,
+                 max_bench: int = 1) -> Dict[str, object]:
+    """Re-run :func:`find_bench` from the PDF for documents with a tiny bench.
+
+    Needed because :func:`reparse_bench` can only re-validate the bench *text*
+    already stored, and the "J. followed by a capital is an initial" bug stored a
+    truncated line: the nine-judge Puttaswamy bench was saved as
+    ``JAGDISH SINGH KHEHAR, CJI, J.``, so no amount of re-reading that string
+    recovers the other eight judges.
+
+    ``max_bench`` defaults to 1 and that is the **complete** candidate set, not a
+    sample: the bug always cut the line at the first judge's initial, so every
+    document it touched ended up with exactly one judge, and documents with zero
+    had no bench line found at all.  A document already showing two or more
+    judges cannot have been truncated this way.
+    """
+    import json
+    import os
+    from pathlib import Path
+
+    from nyaya import ingest
+    from nyaya.utils import read_jsonl
+
+    src = Path(src or config.JUDGMENTS_JSONL)
+    stats = {"records": 0, "candidates": 0, "improved": 0, "unchanged": 0,
+             "no_pdf": 0, "pdf_error": 0}
+    examples: List[str] = []
+    rows: List[Dict[str, object]] = []
+
+    for row in read_jsonl(src):
+        stats["records"] += 1
+        before = int(row.get("bench_size") or 0)
+        if before > max_bench:
+            rows.append(row)
+            continue
+        stats["candidates"] += 1
+        fp = ingest.pdf_local(int(row.get("year") or 0),
+                              str(row.get("source_path") or ""))
+        if not fp.exists():
+            stats["no_pdf"] += 1
+            rows.append(row)
+            continue
+        try:
+            text = ingest.clean_pages(ingest.extract_pdf(fp))
+        except Exception:
+            stats["pdf_error"] += 1
+            rows.append(row)
+            continue
+        lines = text.splitlines()
+        body, source = find_bench("\n".join(lines[:BENCH_SEARCH_LINES]))
+        names = parse_judges(body) if body else []
+        if len(names) > before:
+            stats["improved"] += 1
+            if len(examples) < 10:
+                examples.append(f"{row['doc_id']} {row.get('source_path')}: "
+                                f"{before} -> {len(names)}  {names[:3]}")
+            zones_d = dict(row.get("zones") or {})
+            zones_d["bench"] = body
+            row["zones"] = zones_d
+            row["judges"] = names
+            row["bench_size"] = len(names)
+        else:
+            stats["unchanged"] += 1
+        rows.append(row)
+
+    stats["examples"] = examples
+    if dry_run:
+        return stats
+    tmp = src.with_suffix(".jsonl.tmp")
+    with tmp.open("w", encoding="utf-8") as fh:
+        for row in rows:
+            fh.write(json.dumps(row, ensure_ascii=False))
+            fh.write("\n")
+    from nyaya.index.positional import _replace_with_retry
+
+    # On Windows os.replace fails while another member holds the
+    # corpus open; retry rather than discard a completed pass over
+    # 13,878 documents.
+    _replace_with_retry(tmp, src)
     stats["written"] = str(src)
     return stats
 
@@ -1049,12 +1146,17 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
         description="Zone-segmentation utilities (Member 1).")
     ap.add_argument("--reparse-bench", action="store_true",
                     help="re-validate judges/bench_size in judgments.jsonl")
+    ap.add_argument("--refind-bench", action="store_true",
+                    help="re-read the PDF header for documents with bench_size<=1")
     ap.add_argument("--dry-run", action="store_true",
                     help="report what would change without writing")
     args = ap.parse_args(argv)
-    if not args.reparse_bench:
-        ap.error("nothing to do; pass --reparse-bench")
-    out = reparse_bench(dry_run=args.dry_run)
+    if args.refind_bench:
+        out = refind_bench(dry_run=args.dry_run)
+    elif args.reparse_bench:
+        out = reparse_bench(dry_run=args.dry_run)
+    else:
+        ap.error("nothing to do; pass --reparse-bench or --refind-bench")
     for k, v in out.items():
         if isinstance(v, list):
             print(f"{k}:")

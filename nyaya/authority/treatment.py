@@ -280,6 +280,29 @@ _VERB_WITH_OBJECT = re.compile(
     r"^\s+(?!Para\b|Paras\b|Case\b|CASE\b|SCC\b|SCR\b|AIR\b)[A-Z]")
 _ACTOR_SENSITIVE = (OVERRULED, DISTINGUISHED)
 
+#: The cue sits inside a clause *reported* by the cited judgment, so it
+#: predicates of what that judgment said, not of the judgment itself:
+#:
+#:   "reliance was placed on the observations of this Court in E.P. Royappa ...
+#:    and Maneka Gandhi v. Union of India, [1978] 2 SCR 621 **where it was held
+#:    that** the view that Articles 19 and 21 constitute watertight compartments
+#:    has been rightly **overruled**"
+#:
+#: Maneka is live, foundational constitutional law and it is famous for
+#: overrulING - which is exactly why this shape fires on landmark cases, the very
+#: set most likely to be on screen in a demo.  A reporting verb followed by
+#: "that" between the citation and the cue means the cue belongs to the reported
+#: clause.  It is the grammatical sibling of the negation rule: in both, the cue
+#: is present but does not predicate of the cited case.
+#:
+#: Note what this is *not*: an edge-count threshold.  66 of 93 flagged judgments
+#: rest on a single overruled edge, but so do genuine ones (Sankari Prasad 1/73,
+#: Sabhajit Tewary 1/14), so no count or share cutoff separates them.  Only the
+#: grammar does.
+_REPORTED_CLAUSE = re.compile(
+    r"\b(?:held|observed|laid\s+down|stated|ruled|found|declared|noted"
+    r"|opined)\b[^.]{0,40}?\bthat\b", re.I)
+
 # ==========================================================================
 # 2. One edge
 # ==========================================================================
@@ -423,7 +446,10 @@ def forward_disposition(window: str, cite_end: int
             if _VERB_WITH_OBJECT.match(tail[m.end():m.end() + 24]):
                 continue
         if label == OVERRULED:
-            if _CITED_IS_THE_ACTOR.match(window[cite_end:abs_at]):
+            between = window[cite_end:abs_at]
+            if _CITED_IS_THE_ACTOR.match(between):
+                continue
+            if _REPORTED_CLAUSE.search(between):
                 continue
             after = window[abs_at + m.end() - m.start():][:40]
             if _CUE_OBJECT_NOT_A_CASE.match(after):
@@ -494,6 +520,11 @@ def classify(sentence: str, cite_string: str = "",
                         after = sent[m.end():m.end() + 40]
                         if _CUE_OBJECT_NOT_A_CASE.match(after):
                             rejected.append(f"{phrase} + {after.split()[:2]}")
+                            continue
+                        if cite_at < abs_at and _REPORTED_CLAUSE.search(
+                                window[cite_end:abs_at]):
+                            rejected.append(f"{phrase} inside a clause reported "
+                                            f"by the cited case")
                             continue
                         if abs_at > cite_end and _CITED_IS_THE_ACTOR.match(
                                 window[cite_end:abs_at]):
