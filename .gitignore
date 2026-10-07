@@ -3,8 +3,6 @@
 /index/
 /runs/
 *.pdf
-!report/*.pdf
-!docs/*.pdf
 
 # python
 __pycache__/
@@ -14,11 +12,13 @@ venv/
 .ipynb_checkpoints/
 .pytest_cache/
 
-# node / remotion
+# non-code deliverables (kept locally, not in the repo)
+/video/
+/report/
+/docs/
+
+# node
 node_modules/
-video/out/
-video/.remotion/
-video/public/audio/*.wav
 
 # os / editor
 .DS_Store
