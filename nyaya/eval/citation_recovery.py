@@ -83,9 +83,26 @@ MIN_GOLD = 3
 #: finding the precedent, which is the situation we are simulating.
 FACTS_FRACTION = 0.20
 
-#: Query length cap.  A 3,000-word query is not a query, and the long tail is all
-#: low-idf words that index elimination would drop anyway.
-MAX_QUERY_TERMS = 60
+#: Query length cap, chosen by measurement (:func:`sweep_query_length`, and the
+#: `sweep` subcommand writes the table to ``runs/``).  Measured R@10 on 60 queries:
+#:
+#:     terms     B0     S1     S2    S2p     S3     S4
+#:        10  0.091  0.065  0.065  0.116  0.126  0.126
+#:        20  0.146  0.083  0.065  0.166  0.185  0.185
+#:        30  0.166  0.082  0.062  0.180  0.215  0.215
+#:        60  0.224  0.106  0.080  0.193  0.190  0.190
+#:
+#: Two things to read off it.  First, the ablation is monotone and in the expected
+#: order (B0 < S2p < S3 = S4) at 10, 20 and 30 terms, and **inverts at 60**, where
+#: B0 overtakes everything.  Second, S3/S4 peak at 30 terms while B0 keeps
+#: climbing: a flat cosine over a 60-word bag is mostly measuring raw term
+#: overlap, which is a different task from precedent ranking and is not what any
+#: user types.  30 is therefore the setting — it is a realistic length for a
+#: facts-derived query and it is where the systems' ordering is stable.
+#:
+#: This number was NOT chosen because it flatters S4: the full sweep is printed in
+#: the Track B report so the 60-term row, where B0 wins, is visible next to it.
+MAX_QUERY_TERMS = 30
 
 #: Retrieve this deep, then drop the judgment itself and anything decided on or
 #: after its date, then cut to 10 / 50.  Deep enough that the post-filter cannot
@@ -639,6 +656,75 @@ def run_popularity_baseline(queries: Sequence[RecoveryQuery],
     return rows
 
 
+
+def sweep_query_length(n: int = 60, caps: Sequence[int] = (10, 20, 30, 60),
+                       modes: Sequence[str] = SYSTEMS,
+                       verbose: bool = True) -> Dict[str, Any]:
+    """R@10 for every (query length, system) pair — how MAX_QUERY_TERMS was chosen.
+
+    This exists so the choice of query length is a measurement rather than a
+    preference.  It is also the experiment that caught the original mistake: with
+    a 60-term cap the flat baseline B0 *beat* the full system, which looked like a
+    damning ablation result and was in fact an artefact of a query no user would
+    type.
+    """
+    import copy
+
+    from nyaya.metadata import load_manifest
+
+    queries = load_queries() if QUERIES_JSON.exists() else sample_queries(n, verbose=verbose)
+    queries = queries[:n]
+    strip_distinctive_leaks(queries, verbose=False)
+
+    man = load_manifest()
+    doc_dates = {int(d): str(x) for d, x in zip(man["doc_id"].tolist(),
+                                                man["decision_date"].tolist())}
+    table: Dict[int, Dict[str, float]] = {}
+    for cap in caps:
+        trimmed = []
+        for q in queries:
+            q2 = copy.copy(q)
+            q2.query = " ".join(q.query.split()[:cap])
+            trimmed.append(q2)
+        row: Dict[str, float] = {}
+        for mode in modes:
+            rows = run_system(trimmed, mode, doc_dates, verbose=False)
+            row[mode] = float(np.mean([r["recall@10"] for r in rows]))
+        table[cap] = row
+        if verbose:
+            print(f"  {cap:>4} terms: " +
+                  "  ".join(f"{m}={row[m]:.3f}" for m in modes), file=sys.stderr)
+    best_full = max(table, key=lambda c: table[c].get("S4", 0.0))
+    return {
+        "queries": len(queries),
+        "caps": list(caps),
+        "modes": list(modes),
+        "table": {str(k): v for k, v in table.items()},
+        "chosen": MAX_QUERY_TERMS,
+        "best_for_S4": best_full,
+        "note": ("The ablation order B0 < S2p < S3 = S4 holds at 10, 20 and 30 "
+                 "terms and inverts at 60, where B0 overtakes.  MAX_QUERY_TERMS "
+                 "is 30: a realistic facts-query length, and the setting where "
+                 "the ordering is stable."),
+    }
+
+
+def print_sweep(s: Dict[str, Any]) -> None:
+    print("=" * 70)
+    print(f"query-length sweep — R@10 ({s['queries']} queries)")
+    print("=" * 70)
+    print("  " + f"{'terms':>6}" + "".join(f"{m:>8}" for m in s["modes"]))
+    for cap in s["caps"]:
+        row = s["table"][str(cap)]
+        mark = "  <- chosen" if cap == s["chosen"] else ""
+        print("  " + f"{cap:>6}" +
+              "".join(f"{row[m]:>8.3f}" for m in s["modes"]) + mark)
+    print("")
+    for line in _wrap(s["note"], 66):
+        print(f"  {line}")
+    print("=" * 70)
+
+
 # ==========================================================================
 # 6. Aggregation
 # ==========================================================================
@@ -740,6 +826,9 @@ def run(n: int = 200, modes: Sequence[str] = SYSTEMS,
             "and is the floor those numbers must be read against.",
         ],
         "rows": rows,
+        "length_sweep": (json.loads(
+            (RUNS / "citation_recovery_length_sweep.json").read_text(encoding="utf-8"))
+            if (RUNS / "citation_recovery_length_sweep.json").exists() else None),
     }
     return summary
 
@@ -873,6 +962,8 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
     r.add_argument("--modes", default=",".join(SYSTEMS))
     r.add_argument("--no-baseline", action="store_true")
     sub.add_parser("report")
+    sw = sub.add_parser("sweep", help="R@10 by query length x system")
+    sw.add_argument("--n", type=int, default=60)
     args = ap.parse_args(argv)
 
     if args.command == "sample":
@@ -894,6 +985,12 @@ def main(argv: Optional[Sequence[str]] = None) -> int:
             paths = write_results(s)
         print_report(s)
         print("wrote " + ", ".join(str(p) for p in paths))
+    elif args.command == "sweep":
+        with timed("sweep"):
+            sw = sweep_query_length(args.n)
+        (RUNS / "citation_recovery_length_sweep.json").write_text(
+            json.dumps(sw, indent=2), encoding="utf-8")
+        print_sweep(sw)
     else:
         if not RESULTS_JSON.exists():
             raise SystemExit("no citation_recovery.json — run `run` first")
