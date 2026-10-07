@@ -71,12 +71,15 @@ def table_figure(report: Dict[str, Any], out: Optional[Path] = None) -> Path:
 
     fig, ax = plt.subplots(figsize=(7.4, 0.42 * len(systems) + 1.1))
     ax.axis("off")
+    # bbox rather than loc="center": matplotlib sizes a table from its own font
+    # metrics and leaves the rest of the axes empty, which printed as a small
+    # table marooned in half a page of white.  The explicit bbox makes it fill
+    # the axes, so the figure's height is the table's height.
     tbl = ax.table(cellText=cells, rowLabels=systems,
-                   colLabels=metrics + ["median ms"], loc="center",
-                   cellLoc="center")
+                   colLabels=metrics + ["median ms"],
+                   cellLoc="center", bbox=[0.055, 0.0, 0.945, 1.0])
     tbl.auto_set_font_size(False)
     tbl.set_fontsize(9)
-    tbl.scale(1, 1.35)
     for j, m in enumerate(metrics):
         for i, s in enumerate(systems):
             val = report["summary"][s].get(m, float("nan"))
