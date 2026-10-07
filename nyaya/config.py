@@ -56,8 +56,9 @@ ZONE_ID = {z: i for i, z in enumerate(ZONES)}
 #: Zone weights for weighted-zone scoring and BM25F.  `title` was fitted by the
 #: sweep below; `statutes` and `order` were NOT taken from the coordinate-ascent
 #: optimum, and runs/tuning.json records why: that optimum (statutes 0.0,
-#: order 1.0) gains +0.0090 nDCG@10 on the five dev queries and LOSES 0.0200 on
-#: the twenty test queries, which is what overfitting five queries looks like.
+#: order 1.0) gains +0.0045 nDCG@10 on the five dev queries (0.9152 -> 0.9197)
+#: and LOSES 0.0200 on the twenty test queries (0.8786 -> 0.8586), which is what
+#: overfitting five queries looks like.  MAP moves -0.0012 on dev as well.
 #: The search range, the trail and both splits are in runs/tuning.json; the
 #: command is `python -m nyaya.rank.tune --report-test`.
 ZONE_WEIGHTS = {
@@ -72,10 +73,14 @@ ZONE_WEIGHTS = {
     # titles and `union` 1,450 - so a high title weight rewards party-name
     # matches rather than topical ones.  The weighted-zone scorer also amplifies
     # the few real hits enormously, because a per-zone cosine over a 9-token
-    # title is huge; S2's nDCG@10 falls monotonically as the title weight rises,
-    # on BOTH splits (dev 0.4209 -> 0.3597, test 0.6727 -> 0.6263 for title
-    # 0 -> 3).  BM25F is insensitive to it (identical nDCG across the sweep), so
-    # the change costs the shipped S4 nothing and fixes S2.
+    # title is huge.  Swept over title in {0, 0.25, 0.5, 1, 2, 3}, S2's nDCG@10
+    # falls as the weight rises, on BOTH splits: dev 0.4209 / 0.4285 / 0.4205 /
+    # 0.4162 / 0.3758 / 0.3758 and test 0.6725 / 0.6723 / 0.6712 / 0.6557 /
+    # 0.6459 / 0.6312.  (Not strictly monotonic - dev peaks at 0.25 - so 0.5 is
+    # chosen as the value that is near the top on both splits rather than the
+    # dev argmax.)  BM25F is completely insensitive: S2p and S4 return exactly
+    # 0.7977 and 0.8786 on test at every one of the six weights.  So the change
+    # costs the shipped S4 nothing and fixes S2.
     # Scoring-only: no index rebuild is needed.  Sweep in runs/tuning.json.
     "title": 0.5,
     "parties": 0.5,
