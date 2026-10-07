@@ -121,11 +121,12 @@ BOOTSTRAP_SEED = config.SAMPLE_SEED
 # ==========================================================================
 # 1. Metrics — Rakshit owns eval/metrics.py; use his when it exists
 # ==========================================================================
-# TODO(M1): `nyaya/eval/metrics.py` is yours.  Recall@k and MRR are not in the
-# P@k / MAP / nDCG set you listed, so they are defined here.  If you add them,
-# delete these two and import yours instead — two implementations that disagree
-# is exactly the trap we are avoiding.  `_import_metrics()` already prefers
-# yours for anything whose name matches.
+# M1's `nyaya/eval/metrics.py` has landed and DOES provide recall_at_k and
+# reciprocal_rank, so both are delegated to it: one implementation per metric in
+# the project.  His take graded qrels (`Mapping[doc_id, grade]`) because Track A
+# pools graded judgments; Track B's gold is binary, so `_as_qrels` converts.
+# The local arms below are kept only as the fallback for when his module is not
+# importable, and a test asserts the two agree on the same inputs.
 
 
 def _import_metrics():
@@ -136,25 +137,66 @@ def _import_metrics():
         return None
 
 
+def _dedup_ranked(ranked: Sequence[int]) -> List[int]:
+    """Order-preserving de-duplication of a result list.
+
+    Needed before delegating: M1's ``recall_at_k`` counts matching *positions*
+    rather than distinct documents, so a repeated doc id inflates recall above
+    1.0 — ``recall_at_k([5, 5, 5], {5: 1, 7: 1}, 10)`` returns **1.5**.  A
+    ranking should never contain duplicates, and ours does not, but a metric that
+    can exceed its own maximum is a trap for whoever reuses it, so this makes the
+    track robust either way.  Reported to M1; his file, his fix.
+    """
+    seen: Set[int] = set()
+    out: List[int] = []
+    for d in ranked:
+        d = int(d)
+        if d not in seen:
+            seen.add(d)
+            out.append(d)
+    return out
+
+
+def _as_qrels(gold: Set[int]) -> Dict[int, int]:
+    """Gold set -> M1's graded-qrels shape.
+
+    ``eval/metrics.py`` takes ``rels: Mapping[doc_id, grade]`` because Track A
+    pools graded judgments.  Track B's gold is binary — a judgment either cited a
+    precedent or it did not — so every gold document gets grade 1.  Passing the
+    set itself raises ``AttributeError`` inside his functions (they call
+    ``.values()`` and ``.get()``), which is exactly the kind of cross-module
+    breakage that only shows up when both halves exist, so the conversion is
+    explicit and tested rather than implicit.
+    """
+    return {int(d): 1 for d in gold}
+
+
 def recall_at_k(ranked: Sequence[int], gold: Set[int], k: int) -> float:
     """Share of the gold set found in the first ``k`` results.
 
-    Gold is per-query and small (3-20 documents), so this is recall in the plain
-    sense; it is not averaged precision and must not be read as one.
+    Delegates to M1's ``eval/metrics.py`` when it is importable, so there is one
+    implementation of each metric in the project; the local arm is the fallback
+    for when it is not.  Both are checked against each other by
+    ``test_my_metrics_agree_with_m1s``.
     """
     if not gold:
         return 0.0
+    ranked = _dedup_ranked(ranked)
     m = _import_metrics()
     if m is not None and hasattr(m, "recall_at_k"):
-        return float(m.recall_at_k(ranked, gold, k))
+        v = float(m.recall_at_k(ranked, _as_qrels(gold), k))
+        return 0.0 if v != v else v          # his returns nan for empty rels
     return len(set(ranked[:k]) & gold) / len(gold)
 
 
 def reciprocal_rank(ranked: Sequence[int], gold: Set[int]) -> float:
     """1/rank of the first gold document, 0 if none is retrieved."""
+    if not gold:
+        return 0.0
+    ranked = _dedup_ranked(ranked)
     m = _import_metrics()
     if m is not None and hasattr(m, "reciprocal_rank"):
-        return float(m.reciprocal_rank(ranked, gold))
+        return float(m.reciprocal_rank(ranked, _as_qrels(gold)))
     for i, doc_id in enumerate(ranked, 1):
         if doc_id in gold:
             return 1.0 / i

@@ -334,3 +334,62 @@ def test_systems_list_matches_the_contract_modes():
 
     assert tuple(CR.SYSTEMS) == tuple(CONTRACT_MODES)
     assert tuple(EF.MODES) == tuple(CONTRACT_MODES)
+
+
+# ==========================================================================
+# One implementation per metric: delegate to M1's eval/metrics.py
+# ==========================================================================
+def test_gold_set_converts_to_m1s_graded_qrels_shape():
+    """His functions take Mapping[doc_id, grade]; passing a raw set raises."""
+    assert CR._as_qrels({5, 7}) == {5: 1, 7: 1}
+    assert CR._as_qrels(set()) == {}
+
+
+def test_passing_a_set_straight_to_m1s_metrics_would_break():
+    """Pins why the adapter exists: this is the cross-module breakage it avoids."""
+    m = CR._import_metrics()
+    if m is None:
+        pytest.skip("eval/metrics.py not present")
+    with pytest.raises(AttributeError):
+        m.recall_at_k([1, 2, 3], {2, 5}, 2)
+    with pytest.raises(AttributeError):
+        m.reciprocal_rank([1, 2, 3], {2, 5})
+
+
+def test_my_metrics_agree_with_m1s():
+    """Two implementations that disagree is the trap; this is the check."""
+    m = CR._import_metrics()
+    if m is None:
+        pytest.skip("eval/metrics.py not present")
+    rng = np.random.default_rng(358)
+    for _ in range(200):
+        pool = list(range(30))
+        ranked = rng.permutation(pool).tolist()
+        gold = set(rng.choice(pool, size=int(rng.integers(1, 6)),
+                              replace=False).tolist())
+        qrels = CR._as_qrels(gold)
+        for k in (1, 5, 10, 50):
+            mine = len(set(ranked[:k]) & gold) / len(gold)
+            theirs = m.recall_at_k(ranked, qrels, k)
+            assert mine == pytest.approx(theirs)
+            assert CR.recall_at_k(ranked, gold, k) == pytest.approx(mine)
+        mine_rr = next((1.0 / i for i, d in enumerate(ranked, 1) if d in gold), 0.0)
+        assert CR.reciprocal_rank(ranked, gold) == pytest.approx(mine_rr)
+        assert m.reciprocal_rank(ranked, qrels) == pytest.approx(mine_rr)
+
+
+def test_delegation_handles_his_nan_for_empty_relevance():
+    """His recall_at_k returns nan when nothing is judged relevant; ours gives 0."""
+    assert CR.recall_at_k([1, 2], set(), 10) == 0.0
+
+
+def test_duplicate_results_cannot_push_recall_above_one():
+    """M1's recall_at_k counts positions, not distinct docs: [5,5,5] against
+    gold {5,7} gives 1.5.  We de-duplicate before delegating."""
+    assert CR.recall_at_k([5, 5, 5], {5, 7}, 10) == pytest.approx(0.5)
+    assert CR.recall_at_k([5, 5, 7, 7], {5, 7}, 10) == pytest.approx(1.0)
+
+
+def test_dedup_preserves_order():
+    assert CR._dedup_ranked([3, 1, 3, 2, 1]) == [3, 1, 2]
+    assert CR._dedup_ranked([]) == []
