@@ -3,30 +3,27 @@ import {useCurrentFrame} from 'remotion';
 import {COLORS, SIZES} from '../theme';
 import {FONT_MONO} from '../fonts';
 import {Caption, ramp, Scene} from '../components/primitives';
+import {DEMO_WALK} from '../data';
 
 /**
- * Act 4 - the proximity operators, Rakshit's component.
+ * INSERT over `--merge 'privacy /p "fundamental right"' --trace`.
  *
- * Two position lists for one document, walked by two pointers in lock-step.
- * Because every token carries its paragraph and sentence id as well as its
- * offset, the same walk answers /n, /s and /p: only the comparison changes.
- * The pointers really move, one step per beat, and the matching pair lights.
+ * The walk the terminal has just traced, drawn. Two real position lists from
+ * document 239 - `privaci` on top, the head of each `fundament right` phrase hit
+ * underneath - walked by two pointers. Because every token carries its paragraph
+ * and sentence id as well as its offset, the same walk answers /n, /s and /p:
+ * only the comparison changes. The pointers really move, one step per beat, and
+ * the matching pair lights.
+ *
+ * Every position, sentence id and paragraph id below is read out of the index;
+ * DEMO_WALK in src/data.ts is where it is recorded.
  */
 
 type Hit = {pos: number; para: number; sent: number};
 
-const LEFT_HITS: Hit[] = [
-  {pos: 118, para: 7, sent: 22},
-  {pos: 341, para: 14, sent: 61},
-  {pos: 902, para: 31, sent: 150},
-  {pos: 1204, para: 41, sent: 206},
-];
-const RIGHT_HITS: Hit[] = [
-  {pos: 95, para: 6, sent: 19},
-  {pos: 360, para: 14, sent: 63},
-  {pos: 1190, para: 41, sent: 205},
-  {pos: 1588, para: 55, sent: 271},
-];
+const DOC = DEMO_WALK.doc;
+const LEFT_HITS: Hit[] = DEMO_WALK.left;
+const RIGHT_HITS: Hit[] = DEMO_WALK.right;
 
 /** The merge, pre-computed so the animation is the algorithm, not a cartoon. */
 type Step = {i: number; j: number; verdict: 'advance-left' | 'advance-right' | 'match'};
@@ -54,8 +51,8 @@ const STEPS: Step[] = (() => {
 
 const FRAMES_PER_STEP = 42;
 const START = 96;
-const COL_X = 430;
-const COL_W = 236;
+const COL_X = 380;
+const COL_W = 178;
 const ROW_L = 380;
 const ROW_R = 620;
 
@@ -87,11 +84,11 @@ const Cell: React.FC<{h: Hit; x: number; y: number; active: boolean; matched: bo
       transition: 'none',
     }}
   >
-    <div style={{fontSize: 27, color: matched ? COLORS.green : COLORS.ink}}>
+    <div style={{fontSize: 25, color: matched ? COLORS.green : COLORS.ink}}>
       pos {h.pos}
     </div>
-    <div style={{fontSize: 19, color: COLORS.inkDim, marginTop: 4}}>
-      &#182;{h.para} &#183; sent {h.sent}
+    <div style={{fontSize: 18, color: COLORS.inkDim, marginTop: 4}}>
+      &#182;{h.para} &#183; s{h.sent}
     </div>
   </div>
 );
@@ -128,7 +125,7 @@ export const ProximityWalk: React.FC = () => {
         <span style={{color: COLORS.accent}}>/p</span>{' '}
         <span style={{color: COLORS.cool}}>&#8220;fundamental right&#8221;</span>
         <span style={{color: COLORS.inkFaint, fontSize: 25, marginLeft: 26}}>
-          inside doc 8142
+          inside doc {DOC}
         </span>
       </div>
 
@@ -161,7 +158,7 @@ export const ProximityWalk: React.FC = () => {
           opacity: listsIn,
         }}
       >
-        fundament
+        fundament right
       </div>
 
       <div style={{opacity: listsIn}}>
@@ -296,7 +293,22 @@ export const ProximityWalk: React.FC = () => {
         </div>
       </div>
 
-      <Caption delay={380}>
+      <div
+        style={{
+          position: 'absolute',
+          left: SIZES.margin,
+          top: 886,
+          fontFamily: FONT_MONO,
+          fontSize: 23,
+          color: COLORS.inkFaint,
+          opacity: ramp(frame, 300, 350),
+        }}
+      >
+        in doc {DOC}: {DEMO_WALK.pairsAccepted} pairs accepted, smallest gap{' '}
+        {DEMO_WALK.smallestGap} tokens
+      </div>
+
+      <Caption delay={356}>
         A phrase is just <span style={{fontFamily: FONT_MONO}}>/n 1</span> with the order
         kept, so the same routine serves quoted phrases too. Linear in the two lists, never
         quadratic.

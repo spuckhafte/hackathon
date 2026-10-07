@@ -22,11 +22,11 @@ const CELL = 36;
 export const ThreeWays: React.FC = () => {
   const frame = useCurrentFrame();
 
-  const show = (i: number) => ramp(frame, 24 + i * 24, 24 + i * 24 + 20);
-  const split = ramp(frame, 110, 165); // the tokenizer cuts them up
-  const lists = ramp(frame, 175, 240); // three separate postings lists
-  const converge = ramp(frame, 320, 390); // rows slide together and dissolve
-  const fuse = ramp(frame, 358, 410);
+  const show = (i: number) => ramp(frame, 16 + i * 18, 16 + i * 18 + 18);
+  const split = ramp(frame, 82, 128); // the tokenizer cuts them up
+  const lists = ramp(frame, 138, 196); // three separate postings lists
+  const converge = ramp(frame, 232, 292); // rows slide together and dissolve
+  const fuse = ramp(frame, 266, 318);
 
   return (
     <Scene act="the problem" heading="One section of the Penal Code. Three ways to write it.">
@@ -173,13 +173,13 @@ export const ThreeWays: React.FC = () => {
           textAlign: 'center',
           fontSize: 32,
           color: COLORS.inkDim,
-          opacity: ramp(frame, 400, 440),
+          opacity: ramp(frame, 312, 352),
         }}
       >
         one term, one postings list, one place to look
       </div>
 
-      <Caption delay={130}>
+      <Caption delay={104}>
         A general-purpose tokenizer is not wrong here, it is simply blind: these three
         strings share almost no terms, so the same provision ends up in three different
         places in the index.

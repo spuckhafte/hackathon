@@ -11,7 +11,7 @@ export const Outro: React.FC = () => {
   const markIn = ramp(frame, 6, 40);
   const namesIn = ramp(frame, 50, 100);
   const metaIn = ramp(frame, 100, 150);
-  const out = interpolate(frame, [240, 270], [1, 0], {extrapolateLeft: 'clamp'});
+  const out = interpolate(frame, [180, 210], [1, 0], {extrapolateLeft: 'clamp'});
 
   return (
     <Backdrop>

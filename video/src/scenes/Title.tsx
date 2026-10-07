@@ -85,7 +85,7 @@ export const Title: React.FC = () => {
   const meta = useEnter(66);
   const rule = ramp(frame, 34, 64);
   const fieldIn = ramp(frame, 0, 60);
-  const out = interpolate(frame, [480, 510], [1, 0], {extrapolateLeft: 'clamp'});
+  const out = interpolate(frame, [240, 270], [1, 0], {extrapolateLeft: 'clamp'});
 
   return (
     <Backdrop>
@@ -168,7 +168,7 @@ export const Title: React.FC = () => {
 
         <div style={{marginTop: 72, display: 'flex', gap: 96, fontFamily: FONT_SANS}}>
           {TEAM.map((name, i) => {
-            const e = ramp(frame, 150 + i * 22, 150 + i * 22 + 24);
+            const e = ramp(frame, 112 + i * 18, 112 + i * 18 + 22);
             return (
               <div
                 key={name}
