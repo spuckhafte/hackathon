@@ -346,13 +346,21 @@ def test_gold_set_converts_to_m1s_graded_qrels_shape():
 
 
 def test_passing_a_set_straight_to_m1s_metrics_would_break():
-    """Pins why the adapter exists: this is the cross-module breakage it avoids."""
+    """Pins why the adapter exists: this is the cross-module breakage it avoids.
+
+    M1's ``metrics.check_qrels`` now rejects a bare set at the boundary with an
+    explanatory ``TypeError`` instead of dying on ``AttributeError: 'set' object
+    has no attribute 'values'`` deep inside the gain loop.  The breakage this
+    adapter exists to avoid is still pinned here; only the exception type moved,
+    and the message is asserted so the guard cannot silently become a generic
+    failure again.
+    """
     m = CR._import_metrics()
     if m is None:
         pytest.skip("eval/metrics.py not present")
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError, match="graded mapping"):
         m.recall_at_k([1, 2, 3], {2, 5}, 2)
-    with pytest.raises(AttributeError):
+    with pytest.raises(TypeError, match="graded mapping"):
         m.reciprocal_rank([1, 2, 3], {2, 5})
 
 
