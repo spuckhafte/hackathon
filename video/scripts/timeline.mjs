@@ -49,4 +49,4 @@ if (long.length) console.log(`\n!  insert outside the 12-25s window: ${long.map(
 const screenShare = (100 * byKind('screen')) / at;
 if (screenShare < 55 || screenShare > 65) console.log(`\n!  screen share ${screenShare.toFixed(1)}% is outside the 55-65% target`);
 if (at < 300 || at > 480) console.log('\n!! outside the 5:00-8:00 limit');
-else if (at < 420 || at > 450) console.log('\n!  outside the 7:00-7:30 target (still legal)');
+else if (at < 435 || at > 470) console.log('\n!  outside the 7:15-7:50 target (still legal)');
